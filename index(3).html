@@ -1,0 +1,878 @@
+<title>Trip Fuel Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#f3f2ec;--surface:#fffefa;--ink:#1c2126;--muted:#5c6670;--line:#dad7ca;--accent:#e08a00;--accent-ink:#1c1300;--accent-soft:#fbe9c4;--ok:#1f7a4d;--bad:#b3341f;--warn:#8a5a00;--map:#e7e5da;--c-mw:#c0392b;--c-pr:#e67e22;--c-se:#2e86c1;--c-lo:#7f8c8d;
+--sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171a;--surface:#1b1f23;--ink:#ebe9e1;--muted:#98a2ab;--line:#2f353b;--accent:#f0a020;--accent-ink:#1c1300;--accent-soft:#3a2c0c;--ok:#5fc593;--bad:#ff8a73;--warn:#e6b45c;--map:#232a2f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14171a;--surface:#1b1f23;--ink:#ebe9e1;--muted:#98a2ab;--line:#2f353b;--accent:#f0a020;--accent-ink:#1c1300;--accent-soft:#3a2c0c;--ok:#5fc593;--bad:#ff8a73;--warn:#e6b45c;--map:#232a2f;color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans);padding-inline:16px;padding-block:14px 48px}
+*{box-sizing:border-box}
+.wrap{max-width:980px;margin:0 auto}
+h1{font-size:20px;margin:0;letter-spacing:-.01em}
+h2{font-size:15px;margin:0 0 8px;text-wrap:balance}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px;font-weight:600}
+.top{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+.sub{color:var(--muted);font-size:12px}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto}
+nav button{background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);font:600 14px var(--sans);padding:10px 12px;cursor:pointer;white-space:nowrap}
+nav button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+label.f>span.v{font-family:var(--mono);color:var(--ink)}
+.lab{display:flex;justify-content:space-between;gap:8px}
+input[type=number],input[type=text],select{font:14px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:0;width:100%}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button.b{font:600 13px var(--sans);background:var(--accent);color:var(--accent-ink);border:0;border-radius:6px;padding:8px 12px;cursor:pointer}
+button.b.g{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.b.sm{padding:4px 8px;font-size:12px}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{flex:1;background:var(--bg);color:var(--muted);border:0;border-right:1px solid var(--line);padding:6px 4px;font:500 12px var(--sans);cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.ro{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.ro div{background:var(--bg);border-radius:8px;padding:8px 10px}
+.ro b{display:block;font:500 18px var(--mono);font-variant-numeric:tabular-nums}
+.ro small{color:var(--muted);font-size:11px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font:600 11px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:4px 6px;white-space:nowrap}
+td{padding:3px 4px;border-top:1px solid var(--line);white-space:nowrap}
+td input,td select{padding:4px 6px;font-size:13px}
+.scroll{overflow-x:auto}
+.mono{font-family:var(--mono)}
+.pill{display:inline-block;font:500 11px var(--mono);padding:2px 7px;border-radius:99px;border:1px solid var(--line);background:var(--bg)}
+.pill.ok{color:var(--ok);border-color:var(--ok)}.pill.fb{color:var(--warn);border-color:var(--warn)}.pill.bad{color:var(--bad);border-color:var(--bad)}
+.note{background:var(--accent-soft);border-radius:8px;padding:8px 10px;font-size:13px}
+.err{color:var(--bad)}
+.pcards{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+.pc{text-align:left;background:var(--bg);border:2px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;color:var(--ink);font:13px var(--sans)}
+.pc[aria-pressed=true]{border-color:var(--accent)}
+.pc b{display:block;font:500 16px var(--mono)}
+svg text{font-family:var(--mono)}
+.bar{height:10px;border-radius:5px;background:var(--bg);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.log{font:12px/1.5 var(--mono);max-height:260px;overflow:auto;background:var(--bg);border-radius:8px;padding:8px}
+.log .fail{color:var(--bad)}.log .ok{color:var(--ok)}.log .skip{color:var(--muted)}
+details>summary{cursor:pointer;font-weight:600;padding:4px 0}
+.big{font:500 26px var(--mono);font-variant-numeric:tabular-nums}
+@media (max-width:520px){.big{font-size:22px}}
+</style>
+
+<div class="wrap">
+<div class="top"><h1>Trip Fuel Planner</h1><div class="sub">car drag profile → OSM route → litres &amp; € (E95 NL/DE) → monthly budget</div></div>
+<nav id="tabs" role="tablist"></nav>
+
+<section id="tab-car" hidden>
+ <div class="grid">
+  <div class="stack">
+   <div class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:6px"><h2 style="margin:0">Car profile <span class="sub">— drag the round handles</span></h2>
+     <select id="preset" style="width:auto"></select></div>
+    <div class="row" style="margin-bottom:8px"><input type="text" id="plate" value="13-TP-PK" style="width:120px;font-family:var(--mono)" aria-label="kenteken"><button class="b g sm" id="plateGo">Look up kenteken (RDW)</button></div><div class="sub" id="plateStat" style="margin-bottom:8px"></div><div class="note" style="margin-bottom:8px">Owner reports for the petrol Partner 1.6: <b>8.8 L/100 km</b> average (13 cars, 7.0–11.1); factory 8.2 mixed. The model is calibrated to that (×1.2). Your own fill-ups below will beat any of these.</div>
+    <svg id="car" viewBox="0 0 420 230" style="width:100%;height:auto;touch-action:none;background:var(--bg);border-radius:8px" role="img" aria-label="Side view of the car with draggable handles"></svg>
+    <div class="sub" id="carHint" style="margin-top:4px">Handles — <b>roof</b>: height · <b>screen</b>: windscreen rake · <b>rear</b>: back slope · <b>cowl</b>: windscreen base (up/down) and bonnet length · <b>bonnet</b>: bonnet slope (up/down) and length (left/right) · <b>floor</b> / <b>lip</b>: ground clearance. Front is on the right.</div>
+   </div>
+   <div class="card">
+    <h3>Result</h3>
+    <div class="ro" id="carOut"></div>
+    <div style="margin-top:10px" id="bd"></div>
+    <div class="scroll" style="margin-top:10px"><table id="spdTab"></table></div>
+   </div>
+   <div class="card">
+    <h3>Drag breakdown</h3>
+    <div id="cdParts" class="mono" style="font-size:12px"></div>
+   </div>
+  </div>
+  <div class="stack">
+   <div class="card" id="ctl"></div>
+   <div class="card">
+    <h3>Calibrate with a real fill-up</h3>
+    <div class="row"><label class="f" style="flex:1">Measured L/100 km<input type="number" id="calL" value="7.8" step="0.1"></label>
+    <label class="f" style="flex:1">at steady km/h<input type="number" id="calV" value="100"></label></div>
+    <div class="row" style="margin-top:8px"><button class="b" id="calGo">Apply</button><button class="b g" id="calReset">Reset</button><span class="sub" id="calOut"></span></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section id="tab-route" hidden>
+ <div class="stack">
+  <div class="card">
+   <h2>Route</h2>
+   <div id="places" class="stack" style="gap:8px"></div>
+   <div class="row" style="margin-top:10px">
+    <button class="b g sm" id="addVia">+ via point</button>
+    <label class="row" style="gap:6px"><input type="checkbox" id="round" checked> round trip (same way back)</label>
+    <span style="flex:1"></span>
+    <button class="b g" id="sampleBtn">Load sample Wesel→Dieren</button>
+    <button class="b" id="planBtn">Plan route</button>
+   </div>
+   <div id="planStat" style="margin-top:10px"></div>
+  </div>
+  <div class="card"><svg id="map" viewBox="0 0 700 420" style="width:100%;height:auto;background:var(--map);border-radius:8px" role="img" aria-label="Route map coloured by road type"></svg>
+   <div class="row sub" style="margin-top:6px;gap:12px"><span><b style="color:var(--c-mw)">━</b> motorway</span><span><b style="color:var(--c-pr)">━</b> trunk/primary</span><span><b style="color:var(--c-se)">━</b> secondary/tertiary</span><span><b style="color:var(--c-lo)">━</b> local</span><span style="margin-left:auto">© OpenStreetMap contributors (ODbL)</span></div></div>
+  <div class="card">
+   <h2>Fuel &amp; cost</h2>
+   <div class="pcards" id="pcards"></div>
+   <div id="tot" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+   <div class="row" style="justify-content:space-between"><h2 style="margin:0">Road segments <span class="sub">— from OSM, editable</span></h2><button class="b g sm" id="addSeg">+ segment</button></div>
+   <div class="sub" style="margin:4px 0 8px">Leave “limit” empty to use the country default (shown as placeholder). Empty “lights” = estimated from road type. Every value here is yours to overrule.</div>
+   <div class="scroll"><table id="segTab"></table></div>
+  </div>
+  <div class="grid">
+   <div class="card"><h3>E95 price (€/L)</h3><div class="row" id="prices"></div><div class="sub" style="margin-top:6px">Defaults: EU Weekly Oil Bulletin via fuel-prices.eu, 21 Sep 2026. Edit anytime.</div>
+    <button class="b g sm" style="margin-top:6px" id="priceLive">Try live update</button> <span class="sub" id="priceStat"></span></div>
+   <div class="card"><h3>Save for monthly budget</h3>
+    <div class="row"><input type="text" id="tripLabel" placeholder="Label, e.g. Wesel ⇄ Dieren" style="flex:2"><input type="number" id="tripTimes" value="2" min="0" style="flex:1" aria-label="times per month"><span class="sub">× / month</span></div>
+    <button class="b" style="margin-top:8px" id="saveTrip">Add to trips</button> <span class="sub" id="saveStat"></span></div>
+  </div>
+  <div class="grid">
+   <details class="card"><summary>Speed profiles</summary><div class="scroll"><table id="profTab"></table></div>
+    <div class="sub">factor × limit, capped; “burst” = share of distance where the limit is above the cap that you drive at burst speed.</div></details>
+   <details class="card"><summary>Stop model (traffic lights)</summary><div class="scroll"><table id="stopTab"></table></div><div id="stopPar" class="row" style="margin-top:8px"></div></details>
+  </div>
+ </div>
+</section>
+
+<section id="tab-trips" hidden>
+ <div class="grid">
+  <div class="card"><h2>Monthly budget</h2><div id="budLines" class="stack" style="gap:6px"></div>
+   <button class="b g sm" style="margin-top:8px" id="addLine">+ line</button>
+   <div style="margin-top:14px" id="budOut"></div></div>
+  <div class="card"><h2>Trips per month</h2><div id="tripList" class="stack" style="gap:8px"></div>
+   <div class="sub" id="tripEmpty">No trips yet. Plan a route and press “Add to trips”.</div></div>
+ </div>
+</section>
+
+<section id="tab-debug" hidden>
+ <div class="grid">
+  <div class="card"><h2>Layers</h2><div class="sub" style="margin-bottom:8px">Untick a layer to force the next fallback and see it work.</div><div id="layers" class="stack" style="gap:4px"></div>
+   <label class="row" style="margin-top:10px;gap:6px"><input type="checkbox" id="offline"> simulate offline (all network calls fail)</label>
+   <div class="row" style="margin-top:10px"><button class="b" id="selfTest">Run self-test</button><button class="b g" id="resetAll">Reset all data</button></div>
+   <div id="stOut" class="mono" style="font-size:12px;margin-top:8px"></div></div>
+  <div class="card"><h2>Log</h2><div class="log" id="log"></div></div>
+ </div>
+</section>
+<p class="sub" style="margin-top:18px">Estimates, not measurements. Slope, wind, temperature and traffic are ignored; calibrate against real fill-ups. Route: OSRM/Valhalla · roads: Overpass · geocoding: Nominatim/Photon — all OpenStreetMap data (ODbL).</p>
+</div>
+
+<script>
+/* Core: pure functions, no DOM. Works in browser (global Core) and node. */
+(function (root) {
+'use strict';
+const G = 9.81, RHO = 1.2, LHV = 32e6; // E95 ~32 MJ/L
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const R2D = 180 / Math.PI, D2R = Math.PI / 180;
+
+/* ---------- car ---------- */
+const PRESETS = {
+  partner: { name: 'Peugeot Partner 1.6 16V (13-TP-PK)', plate: '13TPPK', length: 4.14, width: 1.72, height: 1.81, mass: 1329, load: 150,
+    bonnetLen: 0.60, bonnetSlope: 14, cowl: 0.95, rake: 55, rearAngle: 8, underbody: 'normal', clearance: 0.16, frontClear: 0.26, mirrors: 2,
+    roofRails: false, roofBox: false, bikeRack: false, windowOpen: false, fill: 0.82,
+    disp: 1.587, tyreBar: 2.3, tyreType: 'normal', cdOverride: null, calib: 1.2 },
+  hatch: { name: 'Generic hatchback', length: 4.05, width: 1.75, height: 1.46, mass: 1150, load: 100,
+    bonnetLen: 1.0, bonnetSlope: 14, cowl: 0.80, rake: 60, rearAngle: 30, underbody: 'normal', clearance: 0.14, frontClear: 0.16, mirrors: 2,
+    roofRails: false, roofBox: false, bikeRack: false, windowOpen: false, fill: 0.80,
+    disp: 1.2, tyreBar: 2.3, tyreType: 'normal', cdOverride: null, calib: 1.1 },
+  camper: { name: 'Large camper van', length: 5.99, width: 2.05, height: 2.65, mass: 3000, load: 300,
+    bonnetLen: 0.06, bonnetSlope: 6, cowl: 1.0, rake: 42, rearAngle: 0, underbody: 'rough', clearance: 0.22, frontClear: 0.30, mirrors: 2,
+    roofRails: true, roofBox: false, bikeRack: false, windowOpen: false, fill: 0.88,
+    disp: 2.2, tyreBar: 4.0, tyreType: 'normal', cdOverride: null, calib: 1.1 },
+};
+const TYRE_CRR = { eco: 0.008, normal: 0.010, allseason: 0.0115, offroad: 0.014 };
+
+function lerpTab(x, tab) { // tab: [[x,y],...] ascending
+  if (x <= tab[0][0]) return tab[0][1];
+  for (let i = 1; i < tab.length; i++) if (x <= tab[i][0]) { const t = (x - tab[i - 1][0]) / (tab[i][0] - tab[i - 1][0]); return tab[i - 1][1] + t * (tab[i][1] - tab[i - 1][1]); }
+  return tab[tab.length - 1][1];
+}
+const bonnetKind = len => len < 0.15 ? 'none' : len < 0.9 ? 'short' : 'long';
+function estimateCd(c) {
+  const parts = [{ label: 'Base (smooth body)', val: 0.22 }];
+  const bf = clamp(c.bonnetLen / 1.2, 0, 1);
+  parts.push({ label: bf < 0.12 ? 'Front: cab-over (flat face)' : 'Front: bonnet ' + c.bonnetLen.toFixed(2) + ' m', val: 0.07 * (1 - bf) });
+  parts.push({ label: 'Windscreen rake ' + Math.round(c.rake) + '° from vertical', val: 0.06 * (1 - Math.min(c.rake, 65) / 65) });
+  parts.push({ label: 'Bonnet slope ' + Math.round(c.bonnetSlope) + '°', val: 0.04 * (1 - clamp(c.bonnetSlope / 20, 0, 1)) * bf });
+  parts.push({ label: 'Rear slope ' + Math.round(c.rearAngle) + '° from vertical', val: lerpTab(c.rearAngle, [[0, 0.05], [25, 0.035], [40, 0.02], [60, 0.005], [75, 0]]) });
+  parts.push({ label: 'Underbody: ' + c.underbody, val: { smooth: 0, normal: 0.02, rough: 0.04 }[c.underbody] });
+  parts.push({ label: 'Ground clearance ' + Math.round(c.clearance * 100) + ' cm', val: 0.15 * (c.clearance - 0.15) });
+  parts.push({ label: 'Front lip height ' + Math.round(c.frontClear * 100) + ' cm', val: 0.10 * (c.frontClear - 0.20) });
+  parts.push({ label: c.mirrors + ' outer mirror(s)', val: 0.006 * c.mirrors });
+  if (c.roofRails) parts.push({ label: 'Roof rails', val: 0.01 });
+  if (c.roofBox) parts.push({ label: 'Roof box', val: 0.06 });
+  if (c.bikeRack) parts.push({ label: 'Bike rack', val: 0.05 });
+  if (c.windowOpen) parts.push({ label: 'Window open', val: 0.03 });
+  const auto = parts.reduce((s, p) => s + p.val, 0);
+  return { auto, cd: c.cdOverride > 0 ? c.cdOverride : auto, parts };
+}
+const frontalArea = c => c.fill * c.width * c.height;
+const crr = c => (TYRE_CRR[c.tyreType] || 0.01) * Math.pow(2.5 / clamp(c.tyreBar, 1, 5), 0.35);
+const totalMass = c => c.mass + c.load;
+
+const DEFAULT_PARAMS = {
+  etaDrive: 0.90, etaI: 0.36, idleLph: 0.6, aDec: 1.2, aAcc: 1.0, waitS: 20, accKW: 0.3, calib: 1.0,
+  stopP: { motorway: 0, trunk: 0.15, primary: 0.15, secondary: 1 / 3, tertiary: 1 / 3, unclassified: 1 / 3, residential: 1 / 3, living_street: 1 / 3, service: 1 / 3 },
+  sigPerKm: { motorway: 0, trunk: 0.05, primary: 0.25, secondary: 0.35, tertiary: 0.35, unclassified: 0.15, residential: 0.6, living_street: 0, service: 0.3 },
+};
+const HW = Object.keys(DEFAULT_PARAMS.stopP);
+
+/* Willans-line cruise model. v in km/h -> L/100km + breakdown (kW at engine input) */
+function cruise(vKmh, c, p) {
+  const v = Math.max(vKmh, 8) / 3.6, m = totalMass(c);
+  const roll = crr(c) * m * G * v / 1000;
+  const cdA = estimateCd(c).cd * frontalArea(c);
+  const aero = 0.5 * RHO * cdA * v ** 3 / 1000;
+  const fric = (0.45 * c.disp + 0.3) + 0.047 * c.disp * v;
+  const eta = p.etaDrive, acc = p.accKW;
+  const fuelKW = ((roll + aero) / eta + fric + acc) / p.etaI;
+  const lPerS = fuelKW * 1000 / LHV * p.calib;
+  return { l100: lPerS / v * 1e5, kw: { roll: roll / eta, aero: aero / eta, fric, acc }, fuelKW };
+}
+function stopCost(vKmh, c, p) {
+  const v = vKmh / 3.6, m = totalMass(c);
+  const kin = 0.5 * m * v * v * 1.05;
+  const fuelAcc = kin / (p.etaDrive * p.etaI * 0.85) / LHV * p.calib;
+  const fuelIdle = p.idleLph * p.waitS / 3600;
+  const extraS = v / (2 * p.aDec) + v / (2 * p.aAcc) + p.waitS;
+  return { L: fuelAcc + fuelIdle, s: extraS };
+}
+
+/* ---------- maxspeed / defaults ---------- */
+const DEF_LIMIT = {
+  NL: { motorway: 100, trunk: 100, primary: 80, secondary: 80, tertiary: 80, unclassified: 60, residential: 50, living_street: 15, service: 30 },
+  DE: { motorway: 130, trunk: 100, primary: 100, secondary: 100, tertiary: 100, unclassified: 100, residential: 50, living_street: 7, service: 30 },
+  BE: { motorway: 120, trunk: 90, primary: 90, secondary: 70, tertiary: 70, unclassified: 70, residential: 50, living_street: 20, service: 30 },
+};
+function baseHw(h) { return String(h || '').replace('_link', ''); }
+function parseMaxspeed(s) {
+  if (s == null) return { limit: null };
+  s = String(s).trim().toLowerCase();
+  if (s === 'none' || s === 'unlimited') return { limit: null, unlimited: true };
+  let m = s.match(/^(\d+(?:\.\d+)?)\s*mph$/); if (m) return { limit: Math.round(m[1] * 1.609) };
+  m = s.match(/^(\d+(?:\.\d+)?)/); if (m) return { limit: +m[1] };
+  if (/urban/.test(s)) return { limit: 50 };
+  if (/rural/.test(s)) return { limit: s.startsWith('de') ? 100 : 80 };
+  if (/motorway/.test(s)) return { limit: s.startsWith('nl') ? 100 : 130 };
+  if (/walk/.test(s)) return { limit: 7 };
+  return { limit: null };
+}
+function limitKmh(seg, defs) {
+  defs = defs || DEF_LIMIT;
+  if (seg.limit > 0) return seg.limit;
+  const t = defs[seg.country] || defs.NL; const b = baseHw(seg.hw);
+  let d = t[b] || 50; if (/_link$/.test(seg.hw)) d = Math.min(d, 70);
+  return d;
+}
+
+/* ---------- speed profiles ---------- */
+const PROFILES = {
+  limit:  { label: 'At the limit', factor: 1, cap: 999, burstShare: 0, burstSpeed: 120 },
+  below:  { label: 'Slightly below limit', factor: 0.93, cap: 999, burstShare: 0, burstSpeed: 120 },
+  trucks: { label: '80 behind trucks', factor: 1, cap: 80, burstShare: 0, burstSpeed: 120 },
+  cap100: { label: '100 + bursts to 120', factor: 1, cap: 100, burstShare: 0.15, burstSpeed: 120 },
+};
+
+/* ---------- route computation ---------- */
+function computeSegment(seg, c, p, prices, prof) {
+  const lim = limitKmh(seg);
+  const v1 = Math.min(lim * prof.factor, prof.cap);
+  const b = lim > prof.cap ? prof.burstShare : 0;
+  const v2 = Math.min(lim, prof.burstSpeed);
+  const parts = b > 0 ? [[1 - b, v1], [b, v2]] : [[1, v1]];
+  let L = 0, s = 0;
+  for (const [sh, v] of parts) {
+    const d = seg.len * sh;
+    L += d / 1000 * cruise(v, c, p).l100 / 100;
+    s += d / (v / 3.6);
+  }
+  const measured = seg.signals != null;
+  const sig = measured ? seg.signals : (p.sigPerKm[baseHw(seg.hw)] || 0) * seg.len / 1000;
+  const stops = sig * (p.stopP[baseHw(seg.hw)] || 0);
+  const sc = stopCost(v1, c, p);
+  const stopL = stops * sc.L, stopS = stops * sc.s;
+  const price = prices[seg.country] != null ? prices[seg.country] : prices.NL;
+  const tot = L + stopL;
+  return { lim, v: v1, cruiseL: L, stopL, stops, sig, sigMeasured: measured, sec: s + stopS, L: tot, cost: tot * price, km: seg.len / 1000 };
+}
+function computeRoute(segs, c, p, prices, prof) {
+  const rows = segs.map(s => computeSegment(s, c, p, prices, prof));
+  const T = { km: 0, L: 0, cost: 0, sec: 0, stops: 0, byCountry: {} };
+  rows.forEach((r, i) => {
+    T.km += r.km; T.L += r.L; T.cost += r.cost; T.sec += r.sec; T.stops += r.stops;
+    const k = segs[i].country; const bc = T.byCountry[k] || (T.byCountry[k] = { km: 0, L: 0, cost: 0 });
+    bc.km += r.km; bc.L += r.L; bc.cost += r.cost;
+  });
+  T.l100 = T.km ? T.L / T.km * 100 : 0;
+  return { rows, total: T };
+}
+
+/* ---------- geo ---------- */
+function hav(a, b) {
+  const x = (b[1] - a[1]) * D2R * Math.cos((a[0] + b[0]) / 2 * D2R), y = (b[0] - a[0]) * D2R;
+  return Math.sqrt(x * x + y * y) * 6371008;
+}
+function pathLen(cs) { let d = 0; for (let i = 1; i < cs.length; i++) d += hav(cs[i - 1], cs[i]); return d; }
+function resample(cs, step) {
+  const out = [{ p: cs[0], d: 0 }]; let acc = 0, next = step;
+  for (let i = 1; i < cs.length; i++) {
+    const seg = hav(cs[i - 1], cs[i]); if (!seg) continue;
+    while (acc + seg >= next) {
+      const t = (next - acc) / seg;
+      out.push({ p: [cs[i - 1][0] + (cs[i][0] - cs[i - 1][0]) * t, cs[i - 1][1] + (cs[i][1] - cs[i - 1][1]) * t], d: next });
+      next += step;
+    }
+    acc += seg;
+  }
+  return { pts: out, total: acc };
+}
+function distPtSeg(p, a, b) {
+  const k = Math.cos(p[0] * D2R) * 111320, kk = 110540;
+  const px = p[1] * k, py = p[0] * kk, ax = a[1] * k, ay = a[0] * kk, bx = b[1] * k, by = b[0] * kk;
+  const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+  let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0; t = clamp(t, 0, 1);
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+const NL_POLY = [[2.5,54],[7.3,54],[7.21,53.33],[7.07,53.20],[7.02,52.63],[7.03,52.30],[6.95,52.15],[6.85,52.05],[6.82,51.96],[6.75,51.88],[6.45,51.85],[6.22,51.89],[6.16,51.90],[6.13,51.87],[6.11,51.84],[6.05,51.80],[5.98,51.76],[5.96,51.60],[6.10,51.45],[6.18,51.35],[6.12,51.22],[6.05,51.05],[6.08,50.87],[6.02,50.75],[5.70,50.75],[5.75,51.05],[5.58,51.25],[5.22,51.30],[5.03,51.43],[4.75,51.48],[4.47,51.47],[4.24,51.35],[3.60,51.29],[3.36,51.36],[2.5,51.6]];
+function countryAt(lat, lon) {
+  let inside = false;
+  for (let i = 0, j = NL_POLY.length - 1; i < NL_POLY.length; j = i++) {
+    const [xi, yi] = NL_POLY[i], [xj, yj] = NL_POLY[j];
+    if ((yi > lat) !== (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside ? 'NL' : (lon >= 6.0 ? 'DE' : 'BE');
+}
+function decodePoly6(str) {
+  let i = 0, lat = 0, lon = 0; const out = [];
+  while (i < str.length) {
+    for (const k of [0, 1]) {
+      let sh = 0, r = 0, b;
+      do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32);
+      const d = (r & 1) ? ~(r >> 1) : (r >> 1);
+      if (k === 0) lat += d; else lon += d;
+    }
+    out.push([lat / 1e6, lon / 1e6]);
+  }
+  return out;
+}
+
+/* ---------- fallback runner ---------- */
+async function runLayers(stage, layers, env) {
+  const errs = [];
+  for (const L of layers) {
+    if (env.disabled && env.disabled[L.id]) { env.log(stage, L.id, 'skipped (disabled in Debug)', 'skip'); continue; }
+    const t0 = Date.now();
+    try {
+      const v = await L.fn(env);
+      if (v == null) throw new Error('empty result');
+      env.log(stage, L.id, 'ok ' + (Date.now() - t0) + ' ms', 'ok');
+      return { layer: L.id, value: v, fellBack: errs.length > 0, errors: errs };
+    } catch (e) {
+      const msg = (e && e.message) || String(e);
+      errs.push(L.id + ': ' + msg);
+      env.log(stage, L.id, 'FAILED — ' + msg, 'fail');
+    }
+  }
+  const e = new Error(stage + ': all layers failed (' + errs.join(' | ') + ')'); e.errs = errs; throw e;
+}
+async function getJSON(env, url, opt) {
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const to = setTimeout(() => ctl && ctl.abort(), env.timeoutMs || 12000);
+  try {
+    const r = await env.fetch(url, Object.assign({ signal: ctl && ctl.signal }, opt || {}));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(to); }
+}
+
+/* geocode */
+const GAZ = { wesel: [51.6587, 6.6170], dieren: [52.0507, 6.1045], arnhem: [51.9851, 5.8987], emmerich: [51.8326, 6.2485], nijmegen: [51.8126, 5.8372], zevenaar: [51.9297, 6.0710], amsterdam: [52.3730, 4.8922], utrecht: [52.0907, 5.1214], duisburg: [51.4344, 6.7623], dusseldorf: [51.2277, 6.7735], 'düsseldorf': [51.2277, 6.7735], zwolle: [52.5168, 6.0830], apeldoorn: [52.2112, 5.9699], deventer: [52.2660, 6.1552], oberhausen: [51.4963, 6.8638], venlo: [51.3704, 6.1724], eindhoven: [51.4416, 5.4697], rotterdam: [51.9244, 4.4777], 'den haag': [52.0705, 4.3007], enschede: [52.2215, 6.8937], 'weesp': [52.3075, 5.0417] };
+function parseLatLon(q) { const m = String(q).match(/^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/); return m ? [+m[1], +m[2]] : null; }
+const geocodeLayers = q => [
+  { id: 'nominatim', fn: async env => { const j = await getJSON(env, 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q)); if (!j.length) throw new Error('no hit'); return [+j[0].lat, +j[0].lon]; } },
+  { id: 'photon', fn: async env => { const j = await getJSON(env, 'https://photon.komoot.io/api/?limit=1&q=' + encodeURIComponent(q)); const f = j.features && j.features[0]; if (!f) throw new Error('no hit'); return [f.geometry.coordinates[1], f.geometry.coordinates[0]]; } },
+  { id: 'gazetteer', fn: async () => { const g = GAZ[q.trim().toLowerCase()]; if (!g) throw new Error('not in built-in list'); return g; } },
+];
+async function geocode(q, env) {
+  const ll = parseLatLon(q); if (ll) return { layer: 'lat,lon', value: ll, errors: [] };
+  return runLayers('geocode "' + q + '"', geocodeLayers(q), env);
+}
+
+/* routing */
+const routeLayers = pts => [
+  { id: 'osrm', fn: async env => {
+      const co = pts.map(p => p[1].toFixed(5) + ',' + p[0].toFixed(5)).join(';');
+      const j = await getJSON(env, 'https://router.project-osrm.org/route/v1/driving/' + co + '?overview=full&geometries=geojson&steps=true');
+      if (j.code !== 'Ok') throw new Error(j.code || 'bad reply');
+      const r = j.routes[0], steps = [];
+      r.legs.forEach(l => l.steps.forEach(s => { const g = s.geometry.coordinates; steps.push({ dist: s.distance, dur: s.duration, name: s.name || '', ref: s.ref || '', coords: g.map(x => [x[1], x[0]]) }); }));
+      return { coords: r.geometry.coordinates.map(x => [x[1], x[0]]), dist: r.distance, dur: r.duration, steps };
+  } },
+  { id: 'valhalla', fn: async env => {
+      const j = await getJSON(env, 'https://valhalla1.openstreetmap.de/route', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ locations: pts.map(p => ({ lat: p[0], lon: p[1] })), costing: 'auto', directions_options: { units: 'kilometers' } }) });
+      if (!j.trip) throw new Error('bad reply');
+      let coords = [], steps = [];
+      j.trip.legs.forEach(l => {
+        const sh = decodePoly6(l.shape), off = coords.length; coords = coords.concat(sh);
+        l.maneuvers.forEach(m => steps.push({ dist: m.length * 1000, dur: m.time, name: (m.street_names || [])[0] || '', ref: (m.street_names || []).find(n => /^[ABEN]\s?\d/.test(n)) || '', coords: sh.slice(m.begin_shape_index, m.end_shape_index + 1) }));
+      });
+      return { coords, dist: j.trip.summary.length * 1000, dur: j.trip.summary.time, steps };
+  } },
+  { id: 'straight-line', fn: async () => {
+      const coords = pts, d = pathLen(coords) * 1.25;
+      return { coords, dist: d, dur: d / (65 / 3.6), steps: chunkSteps(coords, d), approx: true };
+  } },
+];
+function chunkSteps(coords, d) { // split straight line in ~5 km pieces so country/border works
+  const k = d / 1.25, n = Math.max(1, Math.round(k / 5000)), r = resample(coords, k / n), out = [];
+  for (let i = 1; i < r.pts.length; i++) { const dd = (r.pts[i].d - r.pts[i - 1].d) * 1.25; out.push({ dist: dd, dur: dd / (65 / 3.6), name: '', ref: '', coords: [r.pts[i - 1].p, r.pts[i].p] }); }
+  return out.length ? out : [{ dist: d, dur: d / (65 / 3.6), name: '', ref: '', coords }];
+}
+async function route(pts, env) { return runLayers('route', routeLayers(pts), env); }
+
+/* classify: Overpass -> Overpass mirror -> OSRM-step heuristic */
+function overpassQuery(coords) {
+  const { pts, total } = resample(coords, Math.max(250, coords.length ? pathLen(coords) / 350 : 250));
+  const around = pts.map(x => x.p[0].toFixed(5) + ',' + x.p[1].toFixed(5)).join(',');
+  const re = '^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$';
+  return '[out:json][timeout:40];way(around:15,' + around + ')[highway~"' + re + '"];out tags geom qt;node(around:15,' + around + ')[highway=traffic_signals];out qt;';
+}
+function segmentsFromOverpass(coords, data) {
+  const ways = data.elements.filter(e => e.type === 'way' && e.geometry && e.geometry.length > 1).map(w => {
+    const g = w.geometry.map(q => [q.lat, q.lon]);
+    let mnLa = 1e9, mxLa = -1e9, mnLo = 1e9, mxLo = -1e9; g.forEach(q => { mnLa = Math.min(mnLa, q[0]); mxLa = Math.max(mxLa, q[0]); mnLo = Math.min(mnLo, q[1]); mxLo = Math.max(mxLo, q[1]); });
+    return { id: w.id, tags: w.tags || {}, g, bb: [mnLa - 0.0003, mxLa + 0.0003, mnLo - 0.0005, mxLo + 0.0005] };
+  });
+  const sigs = data.elements.filter(e => e.type === 'node').map(n => [n.lat, n.lon]);
+  const { pts } = resample(coords, 60);
+  let prev = null; const assign = [];
+  for (let i = 0; i < pts.length; i++) {
+    const P = pts[i].p; let best = null, bd = 1e9;
+    for (const w of ways) {
+      if (P[0] < w.bb[0] || P[0] > w.bb[1] || P[1] < w.bb[2] || P[1] > w.bb[3]) continue;
+      let d = 1e9; for (let k = 1; k < w.g.length; k++) d = Math.min(d, distPtSeg(P, w.g[k - 1], w.g[k]));
+      if (prev && w.id === prev.id) d -= 5;
+      if (d < bd) { bd = d; best = w; }
+    }
+    if (best && bd < 30) prev = best;
+    assign.push(best && bd < 30 ? best : null);
+  }
+  // signals -> nearest sample
+  const sigAt = new Array(pts.length).fill(0), used = new Set();
+  sigs.forEach((s, si) => { let bi = -1, bd = 1e9; pts.forEach((x, i) => { const d = hav(x.p, s); if (d < bd) { bd = d; bi = i; } }); if (bd < 25 && !used.has(bi)) { sigAt[bi]++; used.add(bi); } });
+  const segs = []; let cur = null;
+  for (let i = 0; i < pts.length; i++) {
+    const w = assign[i], t = w ? w.tags : { highway: 'unclassified' };
+    const hw = t.highway; const ms = parseMaxspeed(t.maxspeed || t['maxspeed:forward']);
+    const c = countryAt(pts[i].p[0], pts[i].p[1]);
+    const key = hw + '|' + ms.limit + '|' + !!ms.unlimited + '|' + c;
+    const step = i ? pts[i].d - pts[i - 1].d : 0;
+    if (!cur || cur.key !== key) { cur = { key, name: t.ref || t.name || '', hw, limit: ms.limit, unlimited: !!ms.unlimited, country: c, len: 0, signals: 0, pts: [pts[i].p], unknown: !w }; segs.push(cur); }
+    cur.len += step; cur.signals += sigAt[i]; cur.pts.push(pts[i].p);
+  }
+  return mergeTiny(segs);
+}
+function mergeTiny(segs) { // absorb runs < 200 m into predecessor to keep the table readable
+  const out = [];
+  for (const s of segs) {
+    if (out.length && s.len < 200) { const p = out[out.length - 1]; p.len += s.len; p.signals += s.signals; p.pts = p.pts.concat(s.pts); }
+    else out.push(s);
+  }
+  return out.filter(s => s.len > 0).map((s, i) => Object.assign(s, { id: i + 1, key: undefined }));
+}
+function classifyFromSteps(r) {
+  const segs = []; let cur = null;
+  r.steps.forEach(s => {
+    if (!s.dist) return;
+    const v = s.dur > 0 ? s.dist / s.dur : 15, ref = s.ref || '';
+    const mid = s.coords[Math.floor(s.coords.length / 2)] || s.coords[0];
+    const c = countryAt(mid[0], mid[1]);
+    let hw;
+    if (/^(A|E)\s?\d/.test(ref) || v > 26) hw = 'motorway';
+    else if (/^(N|B)\s?\d/.test(ref)) hw = v > 20 ? 'trunk' : 'primary';
+    else if (/^(L|K|S|N)\s?\d/.test(ref) || v > 14) hw = 'secondary';
+    else if (!s.name && !ref) hw = 'unclassified';
+    else hw = 'residential';
+    const key = hw + '|' + c;
+    if (!cur || cur.key !== key) { cur = { key, name: ref || s.name, hw, limit: null, unlimited: false, country: c, len: 0, signals: null, pts: [], estimated: true }; segs.push(cur); }
+    cur.len += s.dist; cur.pts = cur.pts.concat(s.coords);
+  });
+  return mergeTiny(segs);
+}
+async function classify(rt, env) {
+  const post = url => async e => {
+    const body = 'data=' + encodeURIComponent(overpassQuery(rt.coords));
+    const j = await getJSON(e, url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+    if (!j.elements) throw new Error('bad reply');
+    const segs = segmentsFromOverpass(rt.coords, j); if (!segs.length) throw new Error('no segments'); return segs;
+  };
+  return runLayers('classify', [
+    { id: 'overpass', fn: post('https://overpass-api.de/api/interpreter') },
+    { id: 'overpass-mirror', fn: post('https://overpass.kumi.systems/api/interpreter') },
+    { id: 'osrm-step-heuristic', fn: async () => { const s = classifyFromSteps(rt); if (!s.length) throw new Error('no steps'); return s; } },
+  ], env);
+}
+
+/* kenteken (RDW open data, CC0). width/height are NOT in RDW. */
+const PLATE_CACHE = { '13TPPK': { name: 'PEUGEOT PARTNER (2007, MPV)', massEmpty: 1229, massRoadReady: 1329, length: 4.14, disp: 1.587, kw: 80, fuel: 'Benzine', cyl: 4, euro: 'EURO 4', wheelbase: 2.69, width: 1.72, height: 1.81 } };
+function mapRdw(a, b) {
+  const n = k => (a && a[k] != null ? +a[k] : null);
+  return { name: [a.merk, a.handelsbenaming].filter(Boolean).join(' '), massEmpty: n('massa_ledig_voertuig'), massRoadReady: n('massa_rijklaar'), length: n('lengte') ? n('lengte') / 100 : null, disp: n('cilinderinhoud') ? n('cilinderinhoud') / 1000 : null, kw: b && b.nettomaximumvermogen ? +b.nettomaximumvermogen : null, fuel: b && b.brandstof_omschrijving, cyl: n('aantal_cilinders'), euro: b && b.uitlaatemissieniveau, wheelbase: n('wielbasis') ? n('wielbasis') / 100 : null };
+}
+async function lookupPlate(plate, env) {
+  const p = String(plate).replace(/[^a-z0-9]/gi, '').toUpperCase();
+  const rdw = async (e, fmt) => {
+    const q = fmt === 1 ? '?kenteken=' + p : "?$where=kenteken='" + p + "'";
+    const a = await getJSON(e, 'https://opendata.rdw.nl/resource/m9d7-ebf2.json' + q); if (!a.length) throw new Error('plate not found');
+    const b = await getJSON(e, 'https://opendata.rdw.nl/resource/8ys7-d773.json' + q).catch(() => [{}]);
+    return mapRdw(a[0], b[0] || {});
+  };
+  const r = await runLayers('plate ' + p, [
+    { id: 'rdw', fn: e => rdw(e, 1) },
+    { id: 'rdw-soql', fn: e => rdw(e, 2) },
+    { id: 'built-in cache', fn: async () => { if (!PLATE_CACHE[p]) throw new Error('not cached'); return PLATE_CACHE[p]; } },
+  ], env);
+  const cache = PLATE_CACHE[p] || {};
+  r.value = Object.assign({}, cache, Object.fromEntries(Object.entries(r.value).filter(([, v]) => v != null)));
+  r.value.plate = p; return r;
+}
+
+/* built-in sample: Wesel -> Dieren (approximate, labelled) */
+function sampleRoute() {
+  const S = [
+    ['B8 Wesel–Emmerich', 'primary', 100, false, 'DE', 5, [[51.658,6.617],[51.700,6.50],[51.762,6.395],[51.810,6.30]]],
+    ['Emmerich (urban)', 'secondary', 50, false, 'DE', 3, [[51.810,6.30],[51.835,6.24],[51.862,6.18]]],
+    ['A3 to border', 'motorway', null, true, 'DE', 0, [[51.862,6.18],[51.878,6.13]]],
+    ['A12 Zevenaar–Duiven', 'motorway', 100, false, 'NL', 0, [[51.878,6.13],[51.93,6.06],[51.947,6.01],[51.985,5.97]]],
+    ['A348 to Dieren', 'motorway', 100, false, 'NL', 0, [[51.985,5.97],[52.02,6.03],[52.04,6.08]]],
+    ['Dieren (urban)', 'secondary', 50, false, 'NL', 2, [[52.04,6.08],[52.0507,6.1045]]],
+  ];
+  const segs = S.map((s, i) => ({ id: i + 1, name: s[0], hw: s[1], limit: s[2], unlimited: s[3], country: s[4], signals: s[5], pts: s[6], len: pathLen(s[6]) * 0.97 }));
+  const coords = segs.reduce((a, s) => a.concat(s.pts), []);
+  const dist = segs.reduce((a, s) => a + s.len, 0);
+  return { coords, dist, dur: dist / 20, steps: [], segs };
+}
+
+/* full pipeline */
+async function planRoute(places, env) {
+  const info = { geocode: [], places: [] };
+  const pts = [];
+  for (const q of places) { const g = await geocode(q, env); pts.push(g.value); info.geocode.push(g.layer); info.places.push({ q, ll: g.value }); }
+  const r = await route(pts, env);
+  const c = await classify(r.value, env).catch(e => ({ layer: 'none', value: null, errors: e.errs || [String(e)] }));
+  return { pts, info, routeLayer: r.layer, route: r.value, classLayer: c.layer, segs: c.value, notes: [].concat(r.errors, c.errors || []) };
+}
+
+const api = { lerpTab, bonnetKind, lookupPlate, PLATE_CACHE, PRESETS, TYRE_CRR, DEFAULT_PARAMS, HW, DEF_LIMIT, PROFILES, estimateCd, frontalArea, crr, totalMass, cruise, stopCost, parseMaxspeed, limitKmh, computeSegment, computeRoute, hav, pathLen, resample, countryAt, decodePoly6, runLayers, geocode, route, classify, classifyFromSteps, segmentsFromOverpass, overpassQuery, sampleRoute, planRoute, GAZ, clamp };
+root.Core = api; if (typeof module !== 'undefined') module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+(function(){
+'use strict';
+const C=Core,$=id=>document.getElementById(id);
+const clamp=C.clamp;
+const KEY='tripfuel.v2';
+const HWN={motorway:'motorway',trunk:'trunk',primary:'primary',secondary:'secondary',tertiary:'tertiary',unclassified:'unclassified',residential:'residential',living_street:'living street',service:'service',motorway_link:'motorway link',trunk_link:'trunk link',primary_link:'primary link',secondary_link:'secondary link',tertiary_link:'tertiary link'};
+const clone=o=>JSON.parse(JSON.stringify(o));
+let S={car:(()=>{const c=clone(C.PRESETS.partner);delete c.calib;return c})(),presetKey:'partner',params:Object.assign(clone(C.DEFAULT_PARAMS),{calib:C.PRESETS.partner.calib}),prices:{NL:2.449,DE:2.348,BE:1.988},
+ profiles:clone(C.PROFILES),profileKey:'limit',places:['Wesel','Dieren'],round:true,trips:[],
+ budget:[{name:'Social security (example — edit)',amt:800,kind:'income'},{name:'Other fixed costs',amt:0,kind:'fixed'}],tab:'car',disabled:{},offline:false};
+let plan=null,segs=[],log=[],nextId=1;
+try{const r=JSON.parse(localStorage.getItem(KEY)||'null');if(r&&r.car){S=Object.assign(S,r);S.params=Object.assign(clone(C.DEFAULT_PARAMS),r.params||{});S.params.stopP=Object.assign({},C.DEFAULT_PARAMS.stopP,(r.params||{}).stopP);S.params.sigPerKm=Object.assign({},C.DEFAULT_PARAMS.sigPerKm,(r.params||{}).sigPerKm)}}catch(e){}
+function save(){try{const {tab,...rest}=S;localStorage.setItem(KEY,JSON.stringify(Object.assign({},rest,{tab})))}catch(e){}}
+const f1=(x,d=1)=>Number(x).toLocaleString('en',{minimumFractionDigits:d,maximumFractionDigits:d});
+const eur=x=>'€'+f1(x,2);
+const mins=s=>{const m=Math.round(s/60);return m>=60?Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m':m+' min'};
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function lg(stage,layer,msg,cls){log.unshift({t:new Date().toLocaleTimeString(),stage,layer,msg,cls});if(log.length>200)log.pop();renderLog()}
+function renderLog(){const el=$('log');if(!el)return;el.innerHTML=log.length?log.map(l=>`<div class="${l.cls}">${l.t} ${esc(l.stage)} › ${esc(l.layer)} — ${esc(l.msg)}</div>`).join(''):'<span class="sub">Nothing yet.</span>'}
+
+/* ---------- tabs ---------- */
+const TABS=[['car','Car'],['route','Route'],['trips','Trips & budget'],['debug','Debug']];
+$('tabs').innerHTML=TABS.map(t=>`<button role="tab" data-t="${t[0]}">${t[1]}</button>`).join('');
+$('tabs').onclick=e=>{const t=e.target.dataset&&e.target.dataset.t;if(t)showTab(t)};
+function showTab(t){S.tab=t;TABS.forEach(x=>{$('tab-'+x[0]).hidden=x[0]!==t});[...$('tabs').children].forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));if(t==='trips')renderTrips();if(t==='debug')renderDebug();save()}
+
+/* ---------- CAR tab ---------- */
+const CTL=[
+ ['length','Length (m)',3.2,7.2,0.01],['width','Width, without mirrors (m)',1.5,2.3,0.01],['height','Height — drag the roof (m)',1.2,2.8,0.01],
+ ['bonnetLen','Bonnet length, 0 = cab-over (m)',0,1.6,0.01],['cowl','Cowl: windscreen-base height (m)',0.5,1.4,0.01],
+ ['bonnetSlope','Bonnet slope, drop angle (°)',0,25,1],['rake','Windscreen rake from vertical (°)',20,75,1],['rearAngle','Rear slope from vertical, 0 = square (°)',0,75,1],
+ ['clearance','Ground clearance under floor (m)',0.10,0.40,0.01],['frontClear','Front lip height (m)',0.10,0.45,0.01],
+ ['mass','Mass, road-ready (kg)',700,4000,10],['load','Load: people + luggage (kg)',0,1000,10],['tyreBar','Tyre pressure (bar)',1.6,4.5,0.1],['disp','Engine size (L)',0.6,3.5,0.001]];
+function buildCtl(){
+ const c=S.car;let h='<h3>Shape &amp; weight</h3><div class="stack" style="gap:10px">';
+ h+=`<div><div class="sub">Front</div><div class="seg" data-k="bonnet">${[['long','Long bonnet'],['short','Short bonnet'],['none','Cab-over']].map(o=>`<button data-v="${o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+  h+=`<div><div class="sub">Underbody panels</div><div class="seg" data-k="underbody">${[['smooth','Smooth'],['normal','Normal'],['rough','Rough']].map(o=>`<button data-v="${o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+ h+=`<div><div class="sub">Outer mirrors</div><div class="seg" data-k="mirrors">${[[0,'None'],[1,'One'],[2,'Two']].map(o=>`<button data-v="${o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+ CTL.forEach(([k,l,mn,mx,st])=>{h+=`<label class="f"><span class="lab">${l}<span class="v" id="v_${k}"></span></span><input type="range" id="r_${k}" min="${mn}" max="${mx}" step="${st}"></label>`});
+ h+=`<div><div class="sub">Tyres</div><div class="seg" data-k="tyreType">${[['eco','Low-rolling'],['normal','Normal'],['allseason','All-season'],['offroad','Chunky']].map(o=>`<button data-v="${o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+ h+='<div class="row">'+[['roofRails','Roof rails'],['roofBox','Roof box'],['bikeRack','Bike rack'],['windowOpen','Window open']].map(o=>`<label class="row" style="gap:6px"><input type="checkbox" data-x="${o[0]}"> ${o[1]}</label>`).join('')+'</div>';
+ h+=`<label class="f"><span class="lab">Cd override (empty = use the estimate)</span><input type="number" id="cdo" step="0.005" min="0.15" max="0.8" placeholder="auto"></label>`;
+ h+=`<label class="f"><span class="lab">Frontal-area fill (0.8 ≈ car, 0.9 ≈ van)</span><input type="number" id="fill" step="0.01" min="0.6" max="1"></label>`;
+ $('ctl').innerHTML=h+'</div>';
+ $('ctl').addEventListener('click',e=>{const b=e.target.closest('.seg button');if(!b)return;const k=b.parentNode.dataset.k;if(k==='bonnet')S.car.bonnetLen={none:0.06,short:0.65,long:1.25}[b.dataset.v];else S.car[k]=k==='mirrors'?+b.dataset.v:b.dataset.v;carChanged()});
+ CTL.forEach(([k])=>$('r_'+k).oninput=e=>{S.car[k]=+e.target.value;carChanged(true)});
+ $('ctl').querySelectorAll('[data-x]').forEach(i=>i.onchange=()=>{S.car[i.dataset.x]=i.checked;carChanged()});
+ $('cdo').oninput=e=>{S.car.cdOverride=e.target.value?+e.target.value:null;carChanged(true)};
+ $('fill').oninput=e=>{S.car.fill=clamp(+e.target.value||0.8,0.6,1);carChanged(true)};
+}
+function syncCtl(skip){
+ const c=S.car;
+ CTL.forEach(([k,l,mn,mx,st])=>{const r=$('r_'+k);if(document.activeElement!==r)r.value=c[k];$('v_'+k).textContent=(+c[k]).toFixed(st<0.01?3:st<0.1?2:st<1?1:0)});
+ $('ctl').querySelectorAll('.seg').forEach(s=>[...s.children].forEach(b=>b.setAttribute('aria-pressed',String(s.dataset.k==='bonnet'?C.bonnetKind(c.bonnetLen):c[s.dataset.k])===b.dataset.v)));
+ $('ctl').querySelectorAll('[data-x]').forEach(i=>i.checked=!!c[i.dataset.x]);
+ if(document.activeElement!==$('cdo'))$('cdo').value=c.cdOverride||'';
+ if(document.activeElement!==$('fill'))$('fill').value=c.fill;
+}
+function carChanged(soft){
+ syncCtl();drawCar();carOut();save();if(plan||segs.length)calcRoute();
+}
+function carOut(){
+ const c=S.car,p=S.params,e=C.estimateCd(c),A=C.frontalArea(c),cdA=e.cd*A;
+ $('carOut').innerHTML=`<div><b>${e.cd.toFixed(3)}</b><small>Cd ${c.cdOverride?'(override)':'(estimate)'}</small></div><div><b>${A.toFixed(2)} m²</b><small>frontal area A</small></div><div><b>${cdA.toFixed(2)} m²</b><small>CdA</small></div><div><b>${(C.crr(c)*1000).toFixed(2)}‰</b><small>rolling Crr @ ${c.tyreBar.toFixed(1)} bar</small></div><div><b>${C.totalMass(c)} kg</b><small>total mass</small></div>`;
+ const k=C.cruise(100,c,p),t=k.kw.roll+k.kw.aero+k.kw.fric+k.kw.acc;
+ const seg=[['roll','Rolling',k.kw.roll,'var(--c-se)'],['aero','Air drag',k.kw.aero,'var(--c-mw)'],['fric','Engine friction',k.kw.fric,'var(--c-lo)'],['acc','Accessories',k.kw.acc,'var(--line)']];
+ $('bd').innerHTML=`<div class="sub" style="margin-bottom:4px">Where the energy goes at 100 km/h</div><div class="bar">${seg.map(s=>`<i style="width:${s[2]/t*100}%;background:${s[3]}"></i>`).join('')}</div><div class="row sub" style="gap:12px;margin-top:4px">${seg.map(s=>`<span style="white-space:nowrap"><b style="color:${s[3]}">■</b> ${s[1]} ${Math.round(s[2]/t*100)}%</span>`).join('')}</div>`;
+ $('spdTab').innerHTML='<tr><th>km/h</th>'+[50,70,80,90,100,110,120,130].map(v=>`<th>${v}</th>`).join('')+'</tr><tr><td class="mono">L/100</td>'+[50,70,80,90,100,110,120,130].map(v=>`<td class="mono">${C.cruise(v,c,p).l100.toFixed(1)}</td>`).join('')+'</tr><tr><td class="mono">€/100</td>'+[50,70,80,90,100,110,120,130].map(v=>`<td class="mono">${(C.cruise(v,c,p).l100*S.prices.NL).toFixed(1)}</td>`).join('')+'</tr>';
+ $('cdParts').innerHTML=e.parts.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(x.label)}</span><span>${x.val>=0?'+':''}${x.val.toFixed(3)}</span></div>`).join('')+`<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><b>Estimate</b><b>${e.auto.toFixed(3)}</b></div>`;
+ $('calOut').textContent=S.params.calib!==1?`calibration ×${S.params.calib.toFixed(3)} active`:'';
+}
+/* silhouette */
+const D2R=Math.PI/180;
+function geo(){
+ const c=S.car,sc=Math.min(360/c.length,185/2.8),y0=212,x0=30,x1=x0+c.length*sc;
+ const yb=y0-c.clearance*sc,yf=y0-c.frontClear*sc,yr=y0-c.height*sc,bl=c.bonnetLen*sc;
+ const yh=y0-Math.min(c.cowl,c.height-0.2)*sc,xw=x1-bl;
+ const yt=Math.min(yh+Math.tan(c.bonnetSlope*D2R)*bl,yf-0.12*sc);
+ const xr=Math.max(x0+0.5*sc,xw-(yh-yr)*Math.tan(c.rake*D2R));
+ const yd=yr+0.7*(yb-yr),dy=yd-yr;
+ const xrr=clamp(x0+dy*Math.tan(c.rearAngle*D2R),x0,xr-0.3*sc);
+ const xf=x1-0.8*sc;
+ return{sc,y0,x0,x1,yb,yf,yr,bl,yh,xw,yt,xr,yd,dy,xrr,xf};
+}
+function drawCar(){
+ const c=S.car,g=geo(),{sc,y0,x0,x1,yb,yf,yr,yh,xw,yt,xr,yd,xrr,xf}=g;
+ const pts=[[x1,yf],[xf,yb],[x0,yb],[x0,yd],[xrr,yr],[xr,yr],[xw,yh],[x1,yt]];
+ const P=a=>a.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ');
+ const rr=0.3*sc,ry=y0-rr,xrw=x0+0.85*sc,xfw=x1-0.95*sc;
+ const gl=[[xr,yr+3],[xw,yh],[xw-0.9*sc,yh],[xrr+2,yr+3]];
+ let s=`<line x1="0" y1="${y0}" x2="420" y2="${y0}" stroke="var(--line)"/>`;
+ s+=`<polygon points="${P(pts)}" fill="var(--surface)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>`;
+ s+=`<polygon points="${P(gl)}" fill="var(--accent-soft)"/>`;
+ s+=`<polyline points="${P([[xrr,yr],[xr,yr],[xw,yh],[x1,yt]])}" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+ [xrw,xfw].forEach(w=>s+=`<circle cx="${w}" cy="${ry}" r="${rr}" fill="var(--ink)"/><circle cx="${w}" cy="${ry}" r="${rr*0.5}" fill="var(--surface)"/>`);
+ if(c.mirrors>=1)s+=`<rect x="${xw-2}" y="${yh-8}" width="9" height="7" rx="2" fill="var(--ink)"/>`;
+ if(c.mirrors>=2)s+=`<rect x="${xw-6}" y="${yh-10}" width="9" height="7" rx="2" fill="var(--muted)" opacity=".7"/>`;
+ if(c.roofBox)s+=`<rect x="${xrr+0.2*sc}" y="${yr-0.28*sc}" width="${Math.max(10,xr-xrr-0.1*sc)}" height="${0.28*sc}" rx="5" fill="var(--muted)"/>`;
+ if(c.roofRails)s+=`<line x1="${xrr}" y1="${yr-3}" x2="${xr}" y2="${yr-3}" stroke="var(--muted)" stroke-width="2"/>`;
+ if(c.bikeRack)s+=`<rect x="${x0-9}" y="${yb-0.5*sc}" width="8" height="${0.5*sc}" fill="var(--muted)"/>`;
+ const H=(k,x,y,l,dx,dy2)=>`<circle data-h="${k}" cx="${x}" cy="${y}" r="10"/><text x="${x+dx}" y="${y+dy2}" font-size="9" fill="var(--muted)" stroke="none" text-anchor="middle" pointer-events="none">${l}</text>`;
+ s+=`<g fill="var(--accent)" stroke="var(--accent-ink)" stroke-width="1.5" style="cursor:grab">`
+  +H('height',(xr+xrr)/2,yr,'roof',0,-14)+H('rake',xr,yr,'screen',0,-14)+H('rear',xrr,yr,'rear',0,-14)
+  +H('cowl',xw,yh,'cowl',-2,-14)+H('tip',x1,yt,'bonnet',0,-14)
+  +H('floor',(xrw+xfw)/2,yb,'floor',0,20)+H('lip',x1,yf,'lip',0,20)+`</g>`;
+ s+=`<text x="${x0}" y="14" font-size="11" fill="var(--muted)">Cd ${C.estimateCd(c).cd.toFixed(3)} · A ${C.frontalArea(c).toFixed(2)} m² · ${c.length.toFixed(2)}×${c.width.toFixed(2)}×${c.height.toFixed(2)} m</text>`;
+ $('car').innerHTML=s;
+}
+(function(){
+ const svg=$('car');let drag=null,bl0=0;
+ const pt=e=>{const m=svg.getScreenCTM().inverse(),p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(m)};
+ svg.addEventListener('pointerdown',e=>{const h=e.target.dataset&&e.target.dataset.h;if(!h)return;drag=h;bl0=S.car.bonnetLen;svg.setPointerCapture(e.pointerId);e.preventDefault()});
+ svg.addEventListener('pointermove',e=>{if(!drag)return;const q=pt(e),g=geo(),c=S.car,R=(v,d)=>Math.round(v*d)/d;
+  switch(drag){
+   case 'height':c.height=R(clamp((g.y0-q.y)/g.sc,1.2,2.8),100);c.cowl=Math.min(c.cowl,R(c.height-0.2,100));break;
+   case 'rake':c.rake=Math.round(clamp(Math.atan((g.xw-q.x)/Math.max(g.yh-g.yr,10))/D2R,20,75));break;
+   case 'cowl':c.cowl=R(clamp((g.y0-q.y)/g.sc,0.5,Math.min(1.4,c.height-0.2)),100);c.bonnetLen=R(clamp((g.x1-q.x)/g.sc,0,1.6),100);break;
+   case 'tip':c.bonnetSlope=Math.round(clamp(Math.atan((q.y-g.yh)/Math.max(g.bl,12))/D2R,0,25));c.bonnetLen=R(clamp(bl0+(q.x-g.x1)/g.sc,0,1.6),100);break;
+   case 'rear':c.rearAngle=Math.round(clamp(Math.atan((q.x-g.x0)/Math.max(g.dy,10))/D2R,0,75));break;
+   case 'floor':c.clearance=R(clamp((g.y0-q.y)/g.sc,0.10,0.40),100);break;
+   case 'lip':c.frontClear=R(clamp((g.y0-q.y)/g.sc,0.10,0.45),100);break;}
+  carChanged(true)});
+ const end=()=>{drag=null};svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
+})();
+$('preset').innerHTML=Object.entries(C.PRESETS).map(([k,v])=>`<option value="${k}">${esc(v.name)}</option>`).join('');
+function loadPreset(k){const c=clone(C.PRESETS[k]);S.params.calib=c.calib||1;delete c.calib;S.car=c;S.presetKey=k;if(c.plate)$('plate').value=c.plate.replace(/^(..)(..)(..)$/,'$1-$2-$3')}
+$('preset').onchange=e=>{loadPreset(e.target.value);carChanged()};
+$('plateGo').onclick=async()=>{
+ const st=$('plateStat');st.textContent='looking up…';
+ try{const r=await C.lookupPlate($('plate').value,env());const v=r.value,c=S.car;
+  if(v.massRoadReady||v.massEmpty)c.mass=v.massRoadReady||v.massEmpty+100;if(v.length)c.length=v.length;if(v.disp)c.disp=v.disp;if(v.width)c.width=v.width;if(v.height)c.height=v.height;
+  carChanged();
+  st.innerHTML=`<span class="pill ${r.layer==='rdw'||r.layer==='rdw-soql'?'ok':'fb'}">${r.layer}</span> <b>${esc(v.name||v.plate)}</b> · ${v.kw||'?'} kW · ${esc(v.fuel||'?')} · ${esc(v.euro||'')} · ${v.massEmpty||'?'} kg empty · ${v.length||'?'} m · ${v.disp||'?'} L${v.width?'':' · width/height are not in RDW: check the sliders'}${/benz/i.test(v.fuel||'benzine')?'':' · <span class="err">not petrol — this model is petrol only</span>'}`;
+ }catch(e){st.innerHTML=`<span class="err">${esc(e.message)}</span> — enter mass/length/engine by hand.`}
+};
+$('calGo').onclick=()=>{const v=+$('calV').value,m=+$('calL').value;if(!(v>0&&m>0))return;const p=Object.assign({},S.params,{calib:1});S.params.calib=m/C.cruise(v,S.car,p).l100;carChanged()};
+$('calReset').onclick=()=>{S.params.calib=(C.PRESETS[S.presetKey]||{}).calib||1;carChanged()};
+
+/* ---------- ROUTE tab ---------- */
+function buildPlaces(){
+ const P=S.places;$('places').innerHTML=P.map((q,i)=>{const lab=i===0?'From':i===P.length-1?'To':'Via '+i;return `<div class="row" style="flex-wrap:nowrap"><label class="f" style="flex:1"><span>${lab}</span><input type="text" data-i="${i}" value="${esc(q)}" placeholder="place name or lat,lon"></label>${i>0&&i<P.length-1?`<button class="b g sm" data-del="${i}" aria-label="remove via">✕</button>`:''}</div>`}).join('');
+}
+$('places').addEventListener('input',e=>{const i=e.target.dataset.i;if(i!=null){S.places[+i]=e.target.value;save()}});
+$('places').addEventListener('click',e=>{const d=e.target.dataset.del;if(d!=null){S.places.splice(+d,1);buildPlaces();save()}});
+$('addVia').onclick=()=>{S.places.splice(S.places.length-1,0,'');buildPlaces();save()};
+$('round').onchange=e=>{S.round=e.target.checked;save();calcRoute()};
+const env=()=>({fetch:(u,o)=>S.offline?Promise.reject(new Error('simulated offline')):fetch(u,o),disabled:S.disabled,log:lg,timeoutMs:12000});
+function setSample(init){const s=C.sampleRoute();plan={route:s,routeLayer:'built-in sample',classLayer:'built-in sample',geocode:['sample','sample'],notes:[],sample:true,pts:[s.coords[0],s.coords[s.coords.length-1]]};segs=clone(s.segs);if(!init){S.places=['Wesel','Dieren'];buildPlaces()}afterPlan()}
+$('sampleBtn').onclick=()=>setSample(false);
+$('planBtn').onclick=async()=>{
+ const b=$('planBtn');b.disabled=true;b.textContent='Planning…';$('planStat').innerHTML='<span class="sub">Looking up places, route and roads…</span>';
+ try{
+  const p=await C.planRoute(S.places.filter(x=>x.trim()),env());
+  plan={route:p.route,routeLayer:p.routeLayer,classLayer:p.classLayer,geocode:p.info.geocode,notes:p.notes,pts:p.pts};
+  segs=(p.segs||[{name:'Manual — edit me',hw:'secondary',limit:null,country:'NL',len:p.route.dist,signals:null,pts:p.route.coords}]).map(s=>Object.assign({},s));
+  if(!p.segs)plan.classLayer='manual';
+  afterPlan();
+ }catch(e){
+  $('planStat').innerHTML=`<div class="note"><b class="err">Could not place that.</b> ${esc(e.message)}<br>Try “lat,lon” for a place, or use the sample route. See Debug for the full log.</div>`;
+ }
+ b.disabled=false;b.textContent='Plan route';
+};
+function afterPlan(){
+ nextId=segs.length+1;segs.forEach((s,i)=>s.id=i+1);
+ const pill=(l,ok)=>`<span class="pill ${ok}">${esc(l)}</span>`;
+ const fb=(l,first)=>pill(l,l===first?'ok':(l==='manual'||l==='straight-line'||l==='built-in sample'||l==='gazetteer'||l==='osrm-step-heuristic')?'fb':'ok');
+ const live=plan.routeLayer==='osrm'||plan.routeLayer==='valhalla';
+ let h=`<div class="row" style="gap:6px"><span class="sub">places</span>${[...new Set(plan.geocode)].map(l=>fb(l,'nominatim')).join('')}<span class="sub">route</span>${fb(plan.routeLayer,'osrm')}<span class="sub">roads</span>${fb(plan.classLayer,'overpass')}</div>`;
+ if(plan.sample)h+='<div class="note" style="margin-top:8px">Sample route, drawn by hand from typical roads (B8 → A3 → A12 → A348). Approximate; edit the table below.</div>';
+ else if(plan.routeLayer==='straight-line')h+='<div class="note" style="margin-top:8px">Live routing is not reachable from here, so this is a straight line ×1.25 split into pieces. Road types are guessed — fix them in the table, or open the app in a normal browser tab.</div>';
+ else if(plan.classLayer!=='overpass'&&plan.classLayer!=='overpass-mirror')h+='<div class="note" style="margin-top:8px">Route is live, but the OSM road-type lookup (Overpass) failed. Road types are estimated from the route’s own road refs and speeds — check the table.</div>';
+ if(plan.notes&&plan.notes.length)h+=`<details class="sub"><summary>${plan.notes.length} fallback note(s)</summary>${plan.notes.map(n=>`<div class="mono">${esc(n)}</div>`).join('')}</details>`;
+ $('planStat').innerHTML=h;
+ $('tripLabel').value=S.places.filter(x=>x.trim()).join(' → ');
+ buildSegTable();drawMap();calcRoute();
+}
+function buildSegTable(){
+ const hwOpts=k=>Object.keys(HWN).map(h=>`<option value="${h}"${h===k?' selected':''}>${HWN[h]}</option>`).join('');
+ const cOpts=k=>['NL','DE','BE'].map(h=>`<option${h===k?' selected':''}>${h}</option>`).join('');
+ $('segTab').innerHTML='<tr><th>#</th><th>Road</th><th>Type</th><th>Limit</th><th>Ctry</th><th>km</th><th>Lights</th><th>km/h</th><th>L</th><th>€</th><th></th></tr>'+
+ segs.map((s,i)=>`<tr data-i="${i}"><td class="mono">${i+1}</td><td><input type="text" data-f="name" value="${esc(s.name)}" style="width:120px"></td><td><select data-f="hw" style="width:118px">${hwOpts(s.hw)}</select></td>
+ <td><input type="number" data-f="limit" value="${s.limit||''}" placeholder="${C.limitKmh(Object.assign({},s,{limit:null}))}${s.unlimited?'*':''}" style="width:64px"></td>
+ <td><select data-f="country" style="width:58px">${cOpts(s.country)}</select></td>
+ <td><input type="number" data-f="len" value="${(s.len/1000).toFixed(2)}" step="0.1" style="width:72px"></td>
+ <td><input type="number" data-f="signals" value="${s.signals==null?'':s.signals}" placeholder="est." step="1" style="width:56px"></td>
+ <td class="mono" data-o="v"></td><td class="mono" data-o="L"></td><td class="mono" data-o="c"></td><td><button class="b g sm" data-del="${i}" aria-label="delete segment">✕</button></td></tr>`).join('');
+}
+$('segTab').addEventListener('input',e=>{const tr=e.target.closest('tr'),f=e.target.dataset.f;if(!tr||!f)return;const s=segs[+tr.dataset.i];let v=e.target.value;
+ if(f==='name')s.name=v;else if(f==='hw'||f==='country'){s[f]=v}else if(f==='len')s.len=Math.max(0,+v)*1000;else if(f==='limit'){s.limit=v?+v:null;s.unlimited=false}else if(f==='signals')s.signals=v===''?null:+v;
+ calcRoute()});
+$('segTab').addEventListener('click',e=>{const d=e.target.dataset.del;if(d!=null){segs.splice(+d,1);buildSegTable();calcRoute()}});
+$('addSeg').onclick=()=>{segs.push({id:nextId++,name:'New',hw:'secondary',limit:null,country:'NL',len:5000,signals:null,pts:[]});buildSegTable();calcRoute()};
+function calcRoute(){
+ if(!segs.length){$('pcards').innerHTML='<div class="sub">Plan a route or load the sample to see results.</div>';$('tot').innerHTML='';return}
+ const mult=S.round?2:1,out={};
+ for(const k in S.profiles)out[k]=C.computeRoute(segs,S.car,S.params,S.prices,S.profiles[k]);
+ $('pcards').innerHTML=Object.keys(S.profiles).map(k=>{const t=out[k].total;return `<button class="pc" data-k="${k}" aria-pressed="${k===S.profileKey}">${esc(S.profiles[k].label)}<b>${eur(t.cost*mult)}</b><span class="sub">${f1(t.L*mult)} L · ${f1(t.l100)} L/100 · ${mins(t.sec*mult)}</span></button>`}).join('');
+ const R=out[S.profileKey]||out.limit,T=R.total;
+ const bc=Object.entries(T.byCountry).map(([k,v])=>`${k}: ${f1(v.km*mult)} km · ${f1(v.L*mult)} L · ${eur(v.cost*mult)}`).join('<br>');
+ $('tot').innerHTML=`<div class="row" style="gap:24px"><div><div class="sub">${S.round?'Round trip':'One way'} · ${esc(S.profiles[S.profileKey].label)}</div><div class="big">${eur(T.cost*mult)}</div></div><div><div class="sub">Fuel</div><div class="big">${f1(T.L*mult)} L</div></div><div><div class="sub">Distance</div><div class="big">${f1(T.km*mult,0)} km</div></div></div><div class="sub mono" style="margin-top:6px">${bc}<br>≈ ${f1(T.stops*mult,1)} expected light stops · ${mins(T.sec*mult)} driving</div>`;
+ document.querySelectorAll('#segTab tr[data-i]').forEach(tr=>{const r=R.rows[+tr.dataset.i];if(!r)return;tr.querySelector('[data-o=v]').textContent=Math.round(r.v);tr.querySelector('[data-o=L]').textContent=r.L.toFixed(2);tr.querySelector('[data-o=c]').textContent=r.cost.toFixed(2)});
+ window._last={out,mult};
+}
+$('pcards').onclick=e=>{const b=e.target.closest('.pc');if(b){S.profileKey=b.dataset.k;save();calcRoute()}};
+/* map */
+function drawMap(){
+ const cs=segs.flatMap(s=>s.pts||[]);const rc=(plan&&plan.route&&plan.route.coords)||[];const all=cs.length?cs:rc;
+ const svg=$('map');if(!all.length){svg.innerHTML='';return}
+ const W=700,H=420,pad=30;let lo=1e9,hi=-1e9,la0=1e9,la1=-1e9;all.forEach(q=>{lo=Math.min(lo,q[1]);hi=Math.max(hi,q[1]);la0=Math.min(la0,q[0]);la1=Math.max(la1,q[0])});
+ const mx=(lon,z)=>(lon+180)/360*256*2**z,my=(lat,z)=>{const r=lat*Math.PI/180;return(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*256*2**z};
+ let z=16;for(;z>3;z--){if(mx(hi,z)-mx(lo,z)<=W-2*pad&&my(la0,z)-my(la1,z)<=H-2*pad)break}
+ const cx=(mx(lo,z)+mx(hi,z))/2,cy=(my(la0,z)+my(la1,z))/2,vx=cx-W/2,vy=cy-H/2;
+ const X=q=>(mx(q[1],z)-vx).toFixed(1),Y=q=>(my(q[0],z)-vy).toFixed(1);
+ let s='';
+ for(let tx=Math.floor(vx/256);tx<=Math.floor((vx+W)/256);tx++)for(let ty=Math.floor(vy/256);ty<=Math.floor((vy+H)/256);ty++)s+=`<image href="https://tile.openstreetmap.org/${z}/${tx}/${ty}.png" x="${tx*256-vx}" y="${ty*256-vy}" width="256" height="256" opacity=".92"/>`;
+ const col=h=>{h=String(h).replace('_link','');return h==='motorway'?'var(--c-mw)':(h==='trunk'||h==='primary')?'var(--c-pr)':(h==='secondary'||h==='tertiary')?'var(--c-se)':'var(--c-lo)'};
+ s+='<g fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="'+all.map(q=>X(q)+','+Y(q)).join(' ')+'" stroke="#fff" stroke-width="9" opacity=".85"/>';
+ segs.forEach(sg=>{if(sg.pts&&sg.pts.length>1)s+=`<polyline points="${sg.pts.map(q=>X(q)+','+Y(q)).join(' ')}" stroke="${col(sg.hw)}" stroke-width="5"/>`});
+ if(!segs.some(x=>x.pts&&x.pts.length>1))s+='<polyline points="'+rc.map(q=>X(q)+','+Y(q)).join(' ')+'" stroke="var(--c-lo)" stroke-width="5"/>';
+ s+='</g>';
+ const mk=(q,l)=>`<circle cx="${X(q)}" cy="${Y(q)}" r="7" fill="var(--accent)" stroke="var(--accent-ink)" stroke-width="2"/><text x="${+X(q)+10}" y="${+Y(q)-8}" font-size="13" font-weight="500" fill="var(--ink)" stroke="var(--surface)" stroke-width="3" paint-order="stroke">${esc(l)}</text>`;
+ const pts=(plan&&plan.pts)||[all[0],all[all.length-1]];const names=S.places.filter(x=>x.trim());
+ pts.forEach((q,i)=>s+=mk(q,names[i]||(i?'To':'From')));
+ svg.innerHTML=s;
+}
+/* prices */
+function buildPrices(){$('prices').innerHTML=['NL','DE','BE'].map(k=>`<label class="f" style="flex:1;min-width:80px"><span>${k}</span><input type="number" step="0.001" data-p="${k}" value="${S.prices[k]}"></label>`).join('')}
+$('prices').oninput=e=>{const k=e.target.dataset.p;if(k){S.prices[k]=+e.target.value||0;save();calcRoute();carOut()}};
+$('priceLive').onclick=async()=>{
+ $('priceStat').textContent='trying…';
+ const urls={NL:'https://fuel-prices.eu/Netherlands/',DE:'https://fuel-prices.eu/Germany/'};
+ try{for(const k in urls){const r=await fetch(urls[k]);const t=await r.text();const m=t.match(/Euro-?super 95[^0-9]{0,200}?(\d[.,]\d{3})/i);if(!m)throw new Error('no price found for '+k);S.prices[k]=parseFloat(m[1].replace(',','.'))}buildPrices();save();calcRoute();$('priceStat').textContent='updated'}
+ catch(e){lg('prices','fuel-prices.eu','FAILED — '+e.message,'fail');$('priceStat').textContent='not reachable here — kept your values (edit by hand)'}
+};
+/* profiles + stop model tables */
+function buildProf(){
+ $('profTab').innerHTML='<tr><th>Profile</th><th>× limit</th><th>Cap km/h</th><th>Burst %</th><th>Burst km/h</th></tr>'+Object.entries(S.profiles).map(([k,p])=>`<tr data-k="${k}"><td>${esc(p.label)}</td><td><input type="number" step="0.01" data-f="factor" value="${p.factor}" style="width:64px"></td><td><input type="number" data-f="cap" value="${p.cap>=999?'':p.cap}" placeholder="none" style="width:64px"></td><td><input type="number" data-f="burstShare" value="${Math.round(p.burstShare*100)}" style="width:56px"></td><td><input type="number" data-f="burstSpeed" value="${p.burstSpeed}" style="width:64px"></td></tr>`).join('');
+ $('stopTab').innerHTML='<tr><th>Road type</th><th>P(stop at light)</th><th>Lights / km (if unmeasured)</th></tr>'+C.HW.map(h=>`<tr><td>${HWN[h]}</td><td><input type="number" step="0.01" min="0" max="1" data-h="${h}" data-w="stopP" value="${+S.params.stopP[h].toFixed(3)}" style="width:72px"></td><td><input type="number" step="0.05" min="0" data-h="${h}" data-w="sigPerKm" value="${S.params.sigPerKm[h]}" style="width:72px"></td></tr>`).join('');
+ $('stopPar').innerHTML=[['waitS','wait (s)'],['aDec','brake (m/s²)'],['aAcc','pull-away (m/s²)'],['idleLph','idle (L/h)'],['etaI','engine eff.'],['etaDrive','drivetrain eff.']].map(([k,l])=>`<label class="f" style="width:100px"><span>${l}</span><input type="number" step="any" data-pp="${k}" value="${S.params[k]}"></label>`).join('');
+}
+$('profTab').addEventListener('input',e=>{const tr=e.target.closest('tr'),f=e.target.dataset.f;if(!tr||!f)return;const p=S.profiles[tr.dataset.k];let v=+e.target.value;if(f==='cap')p.cap=e.target.value?v:999;else if(f==='burstShare')p.burstShare=clamp(v/100,0,1);else p[f]=v||p[f];save();calcRoute()});
+$('stopTab').addEventListener('input',e=>{const h=e.target.dataset.h;if(h){S.params[e.target.dataset.w][h]=Math.max(0,+e.target.value||0);save();calcRoute()}});
+$('stopPar').addEventListener('input',e=>{const k=e.target.dataset.pp;if(k){const v=+e.target.value;if(v>0){S.params[k]=v;save();calcRoute();carOut()}}});
+$('saveTrip').onclick=()=>{
+ if(!segs.length){$('saveStat').textContent='plan a route first';return}
+ S.trips.push({id:Date.now(),label:$('tripLabel').value||'Trip',segs:segs.map(s=>({name:s.name,hw:s.hw,limit:s.limit,unlimited:s.unlimited,country:s.country,len:s.len,signals:s.signals})),times:Math.max(0,+$('tripTimes').value||0),round:S.round,profile:S.profileKey});
+ save();$('saveStat').textContent='added ✓';setTimeout(()=>$('saveStat').textContent='',2500);
+};
+
+/* ---------- TRIPS tab ---------- */
+function tripCost(t){const T=C.computeRoute(t.segs,S.car,S.params,S.prices,S.profiles[t.profile]||S.profiles.limit).total,m=t.round?2:1;return{cost:T.cost*m,L:T.L*m,km:T.km*m}}
+function renderTrips(){
+ $('budLines').innerHTML=S.budget.map((b,i)=>`<div class="row" style="flex-wrap:nowrap" data-i="${i}"><input type="text" data-f="name" value="${esc(b.name)}" style="flex:2"><input type="number" data-f="amt" value="${b.amt}" style="flex:1;min-width:70px"><select data-f="kind" style="flex:1;min-width:80px"><option value="income"${b.kind==='income'?' selected':''}>income</option><option value="fixed"${b.kind==='fixed'?' selected':''}>fixed cost</option></select><button class="b g sm" data-del="${i}" aria-label="remove line">✕</button></div>`).join('');
+ $('tripEmpty').hidden=S.trips.length>0;
+ $('tripList').innerHTML=S.trips.map((t,i)=>`<div class="card" style="background:var(--bg)" data-i="${i}"><div class="row" style="flex-wrap:nowrap;justify-content:space-between"><input type="text" data-f="label" value="${esc(t.label)}"><button class="b g sm" data-del="${i}" aria-label="remove trip">✕</button></div>
+ <div class="row" style="margin-top:6px"><label class="f" style="width:84px"><span>× / month</span><input type="number" min="0" data-f="times" value="${t.times}"></label><label class="f" style="flex:1;min-width:140px"><span>profile</span><select data-f="profile">${Object.entries(S.profiles).map(([k,p])=>`<option value="${k}"${k===t.profile?' selected':''}>${esc(p.label)}</option>`).join('')}</select></label><label class="row" style="gap:6px;margin-top:14px"><input type="checkbox" data-f="round" ${t.round?'checked':''}> round trip</label></div>
+ <div class="sub mono" data-o="t" style="margin-top:6px"></div></div>`).join('');
+ updTrips();
+}
+function updTrips(){
+ let tot=0,km=0;
+ document.querySelectorAll('#tripList [data-i]').forEach(el=>{const t=S.trips[+el.dataset.i];if(!t)return;const c=tripCost(t);tot+=c.cost*t.times;km+=c.km*t.times;el.querySelector('[data-o=t]').textContent=`${eur(c.cost)} per trip · ${f1(c.L)} L · ${f1(c.km,0)} km → ${eur(c.cost*t.times)} / month`});
+ const inc=S.budget.filter(b=>b.kind==='income').reduce((a,b)=>a+(+b.amt||0),0),fix=S.budget.filter(b=>b.kind==='fixed').reduce((a,b)=>a+(+b.amt||0),0),avail=inc-fix,rem=avail-tot,pct=avail>0?clamp(tot/avail*100,0,100):100;
+ $('budOut').innerHTML=`<div class="row" style="gap:20px"><div><div class="sub">Income − fixed</div><div class="big">${eur(avail)}</div></div><div><div class="sub">Trips</div><div class="big">${eur(tot)}</div></div><div><div class="sub">Left over</div><div class="big ${rem<0?'err':''}" style="${rem>=0?'color:var(--ok)':''}">${eur(rem)}</div></div></div>
+ <div class="bar" style="margin-top:10px"><i style="width:${pct}%;background:${rem<0?'var(--bad)':'var(--accent)'}"></i></div><div class="sub" style="margin-top:4px">${f1(km,0)} km/month · ${avail>0?f1(tot/avail*100,0)+'% of what’s available goes to fuel':'no budget available'}${rem<0?' — over budget':''}</div>`;
+}
+$('budLines').addEventListener('input',e=>{const r=e.target.closest('[data-i]'),f=e.target.dataset.f;if(!r||!f)return;S.budget[+r.dataset.i][f]=f==='amt'?+e.target.value:e.target.value;save();updTrips()});
+$('budLines').addEventListener('click',e=>{const d=e.target.dataset.del;if(d!=null){S.budget.splice(+d,1);save();renderTrips()}});
+$('addLine').onclick=()=>{S.budget.push({name:'New line',amt:0,kind:'income'});save();renderTrips()};
+$('tripList').addEventListener('input',e=>{const r=e.target.closest('[data-i]'),f=e.target.dataset.f;if(!r||!f)return;const t=S.trips[+r.dataset.i];t[f]=f==='times'?Math.max(0,+e.target.value||0):f==='round'?e.target.checked:e.target.value;save();updTrips()});
+$('tripList').addEventListener('click',e=>{const d=e.target.dataset.del;if(d!=null){S.trips.splice(+d,1);save();renderTrips()}});
+
+/* ---------- DEBUG ---------- */
+const LAYERS=[['Geocode','nominatim'],['Geocode','photon'],['Geocode','gazetteer'],['Route','osrm'],['Route','valhalla'],['Route','straight-line'],['Roads','overpass'],['Roads','overpass-mirror'],['Roads','osrm-step-heuristic']];
+function renderDebug(){
+ $('layers').innerHTML=LAYERS.map(([s,l])=>`<label class="row" style="gap:6px"><input type="checkbox" data-l="${l}" ${S.disabled[l]?'':'checked'}> <span class="sub" style="width:64px">${s}</span><span class="mono">${l}</span></label>`).join('');
+ $('offline').checked=!!S.offline;renderLog();
+}
+$('layers').addEventListener('change',e=>{const l=e.target.dataset.l;if(l){if(e.target.checked)delete S.disabled[l];else S.disabled[l]=true;save()}});
+$('offline').onchange=e=>{S.offline=e.target.checked;save()};
+$('resetAll').onclick=()=>{try{localStorage.removeItem(KEY)}catch(e){}location.reload()};
+$('selfTest').onclick=async()=>{
+ const res=[],ok=(n,c)=>res.push((c?'✓ ':'✗ ')+n);
+ const car=Object.assign({},C.PRESETS.partner),p=clone(C.DEFAULT_PARAMS);
+ const c100=C.cruise(100,car,p).l100;ok('Partner @100 km/h in 5.5–8.5 L/100 ('+c100.toFixed(2)+')',c100>5.5&&c100<8.5);
+ ok('lower tyre pressure ⇒ more fuel',C.cruise(100,Object.assign({},car,{tyreBar:1.8}),p).l100>c100);
+ ok('bigger Cd ⇒ more fuel',C.cruise(100,Object.assign({},car,{cdOverride:0.45}),p).l100>c100);
+ ok('NL/DE border sanity',C.countryAt(51.66,6.62)==='DE'&&C.countryAt(52.05,6.10)==='NL');
+ const fake={fetch:()=>Promise.reject(new Error('mock down')),log:()=>{},timeoutMs:500,disabled:{}};
+ try{const r=await C.planRoute(['Wesel','Dieren'],fake);ok('all network down ⇒ still a route ('+r.routeLayer+' / '+r.classLayer+')',!!r.segs&&r.segs.length>0)}catch(e){ok('all network down ⇒ still a route',false)}
+ try{await C.planRoute(['Nowhereville-xyz','Dieren'],fake);ok('unknown place fails clearly',false)}catch(e){ok('unknown place fails with clear error',/geocode/.test(e.message))}
+ const s=C.sampleRoute();ok('sample route computes',C.computeRoute(s.segs,car,p,S.prices,C.PROFILES.limit).total.cost>0);
+ $('stOut').innerHTML=res.map(r=>`<div class="${r[0]==='✓'?'ok':'err'}" style="color:var(--${r[0]==='✓'?'ok':'bad'})">${esc(r)}</div>`).join('');
+};
+
+/* ---------- init ---------- */
+buildCtl();buildPlaces();buildPrices();buildProf();$('round').checked=S.round;
+syncCtl();drawCar();carOut();renderLog();
+showTab(TABS.some(t=>t[0]===S.tab)?S.tab:'car');
+setSample(true);
+})();
+</script>
