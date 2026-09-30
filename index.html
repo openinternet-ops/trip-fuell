@@ -103,7 +103,7 @@ details>summary{cursor:pointer;font-weight:600;padding:4px 0}
  <div class="stack">
   <div class="card">
    <h2>Route</h2>
-   <div id="places" class="stack" style="gap:8px"></div>
+   <div id="places" class="stack" style="gap:8px"></div><datalist id="placeList"></datalist>
    <div class="row" style="margin-top:10px">
     <button class="b g sm" id="addVia">+ via point</button>
     <label class="row" style="gap:6px"><input type="checkbox" id="round" checked> round trip (same way back)</label>
@@ -111,7 +111,17 @@ details>summary{cursor:pointer;font-weight:600;padding:4px 0}
     <button class="b g" id="sampleBtn">Load sample Wesel→Dieren</button>
     <button class="b" id="planBtn">Plan route</button>
    </div>
-   <div id="planStat" style="margin-top:10px"></div>
+   <details style="margin-top:10px"><summary>Analysis settings</summary>
+   <div class="row" style="margin-top:6px">
+    <label class="f" style="flex:2;min-width:200px"><span>Road-type lookup</span><select id="mode"><option value="smart">Smart: guess from the steps, then look up only key points</option><option value="guess">Guess only (no lookups)</option><option value="full">Full: look up every road (slow, can time out)</option></select></label>
+    <label class="f" style="width:120px"><span>Small road up to (m)</span><input type="number" id="an_smallM" min="30" step="10"></label>
+    <label class="f" style="width:110px"><span>¼ points from (km)</span><input type="number" id="an_quarterKm" min="1"></label>
+    <label class="f" style="width:110px"><span>⅛ points from (km)</span><input type="number" id="an_eighthKm" min="1"></label>
+    <label class="f" style="width:110px"><span>1/16 from (km)</span><input type="number" id="an_sixteenthKm" min="1"></label>
+    <label class="f" style="width:120px"><span>“Big road” from (m)</span><input type="number" id="an_bigM" min="200" step="100"></label>
+    <label class="f" style="width:120px"><span>City movement avg km/h</span><input type="number" id="an_cityKmh" min="10" max="60"></label></div>
+   <div class="sub" style="margin-top:4px">Steps up to “small road” = neighbourhood streets; 2× that = small connectors; up to 3 km = local roads; up to 20 km = N-road-like; longer = main road/motorway. One odd step inside a cluster is smoothed away.</div></details>
+  <div id="planStat" style="margin-top:10px"></div>
   </div>
   <div class="card"><svg id="map" viewBox="0 0 700 420" style="width:100%;height:auto;background:var(--map);border-radius:8px" role="img" aria-label="Route map coloured by road type"></svg>
    <div class="row sub" style="margin-top:6px;gap:12px"><span><b style="color:var(--c-mw)">━</b> motorway</span><span><b style="color:var(--c-pr)">━</b> trunk/primary</span><span><b style="color:var(--c-se)">━</b> secondary/tertiary</span><span><b style="color:var(--c-lo)">━</b> local</span><span style="margin-left:auto">© OpenStreetMap contributors (ODbL)</span></div></div>
@@ -120,11 +130,15 @@ details>summary{cursor:pointer;font-weight:600;padding:4px 0}
    <div class="pcards" id="pcards"></div>
    <div id="tot" style="margin-top:12px"></div>
   </div>
+  <div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Depth ladder <span class="sub">— what does more detail change?</span></h2><button class="b g sm" id="runFull">Run L3: look up every road</button></div>
+   <div class="scroll" style="margin-top:8px"><table id="ladder"></table></div><div class="sub" id="ladderNote" style="margin-top:6px"></div></div>
   <div class="card">
    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Road segments <span class="sub">— from OSM, editable</span></h2><button class="b g sm" id="addSeg">+ segment</button></div>
    <div class="sub" style="margin:4px 0 8px">Leave “limit” empty to use the country default (shown as placeholder). Empty “lights” = estimated from road type. Every value here is yours to overrule.</div>
    <div class="scroll"><table id="segTab"></table></div>
   </div>
+  <div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Route anatomy <span class="sub">— clusters, checkpoints, road changes</span></h2><button class="b g sm" id="copyAna">Copy analysis JSON</button></div>
+   <div id="anat" style="margin-top:8px"></div><textarea id="anaJson" readonly hidden style="width:100%;height:120px;margin-top:8px;font:11px var(--mono);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px"></textarea></div>
   <div class="grid">
    <div class="card"><h3>E95 price (€/L)</h3><div class="row" id="prices"></div><div class="sub" style="margin-top:6px">Defaults: EU Weekly Oil Bulletin via fuel-prices.eu, 21 Sep 2026. Edit anytime.</div>
     <button class="b g sm" style="margin-top:6px" id="priceLive">Try live update</button> <span class="sub" id="priceStat"></span></div>
@@ -147,6 +161,32 @@ details>summary{cursor:pointer;font-weight:600;padding:4px 0}
    <div style="margin-top:14px" id="budOut"></div></div>
   <div class="card"><h2>Trips per month</h2><div id="tripList" class="stack" style="gap:8px"></div>
    <div class="sub" id="tripEmpty">No trips yet. Plan a route and press “Add to trips”.</div></div>
+ </div>
+</section>
+
+<section id="tab-drives" hidden>
+ <div class="grid">
+  <div class="stack">
+   <div class="card"><h2>Log a drive</h2>
+    <div class="grid" style="gap:8px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+     <label class="f"><span>Date</span><input type="date" id="dv_date"></label>
+     <label class="f"><span>Route / label</span><input type="text" id="dv_label" list="dvList" placeholder="e.g. Wesel → Dieren"></label>
+     <label class="f"><span>km driven</span><input type="number" id="dv_km" step="0.1" min="0"></label>
+     <label class="f"><span>Litres (fill-up)</span><input type="number" id="dv_l" step="0.01" min="0" placeholder="optional"></label>
+     <label class="f"><span>€ spent</span><input type="number" id="dv_eur" step="0.01" min="0" placeholder="litres × price"></label>
+     <label class="f"><span>Rest stops</span><input type="number" id="dv_rest" min="0" value="0"></label>
+    </div>
+    <datalist id="dvList"></datalist>
+    <label class="f" style="margin-top:8px"><span>Notes</span><input type="text" id="dv_note" placeholder="traffic, weather, roof box on…"></label>
+    <div class="row" style="margin-top:8px"><select id="dv_trip" style="flex:1;min-width:160px"><option value="">Fill from a saved trip…</option></select><button class="b" id="dv_add">Add drive</button><span class="sub" id="dv_stat"></span></div></div>
+   <div class="card"><h3>Backup</h3><div class="row"><button class="b g sm" id="dv_export">Export JSON</button><button class="b g sm" id="dv_import">Import JSON</button></div>
+    <textarea id="dv_json" style="width:100%;height:90px;margin-top:8px;font:11px var(--mono);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px" placeholder="Export puts your log here (copy it). To restore, paste JSON here and press Import."></textarea></div>
+  </div>
+  <div class="stack">
+   <div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">This month</h2><input type="month" id="dv_month" style="width:auto"></div>
+    <div class="ro" id="dv_sum" style="margin-top:10px"></div><div id="dv_bud" style="margin-top:10px"></div><div id="dv_cal" class="sub" style="margin-top:8px"></div></div>
+   <div class="card"><h3>Drives</h3><div class="scroll"><table id="dv_tab"></table></div></div>
+  </div>
  </div>
 </section>
 
@@ -281,9 +321,10 @@ const PROFILES = {
 /* ---------- route computation ---------- */
 function computeSegment(seg, c, p, prices, prof) {
   const lim = limitKmh(seg);
-  const v1 = Math.min(lim * prof.factor, prof.cap);
+  const capA = seg.capAvg && seg.avgKmh > 0 ? seg.avgKmh * 1.03 : 1e9;
+  const v1 = Math.min(lim * prof.factor, prof.cap, capA);
   const b = lim > prof.cap ? prof.burstShare : 0;
-  const v2 = Math.min(lim, prof.burstSpeed);
+  const v2 = Math.min(lim, prof.burstSpeed, capA);
   const parts = b > 0 ? [[1 - b, v1], [b, v2]] : [[1, v1]];
   let L = 0, s = 0;
   for (const [sh, v] of parts) {
@@ -291,10 +332,9 @@ function computeSegment(seg, c, p, prices, prof) {
     L += d / 1000 * cruise(v, c, p).l100 / 100;
     s += d / (v / 3.6);
   }
-  const measured = seg.signals != null;
-  const sig = measured ? seg.signals : (p.sigPerKm[baseHw(seg.hw)] || 0) * seg.len / 1000;
-  const stops = sig * (p.stopP[baseHw(seg.hw)] || 0);
   const sc = stopCost(v1, c, p);
+  let measured = seg.signals != null, sig = measured ? seg.signals : (p.sigPerKm[baseHw(seg.hw)] || 0) * seg.len / 1000, stops = sig * (p.stopP[baseHw(seg.hw)] || 0);
+  if (seg.avgKmh > 0) { const tt = seg.len / (seg.avgKmh / 3.6); stops = Math.max(0, (tt - s) / sc.s); sig = stops; measured = true; } // observed average speed => implied stops
   const stopL = stops * sc.L, stopS = stops * sc.s;
   const price = prices[seg.country] != null ? prices[seg.country] : prices.NL;
   const tot = L + stopL;
@@ -382,7 +422,7 @@ async function runLayers(stage, layers, env) {
 }
 async function getJSON(env, url, opt) {
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const to = setTimeout(() => ctl && ctl.abort(), env.timeoutMs || 12000);
+  const to = setTimeout(() => ctl && ctl.abort(), (opt && opt.timeoutMs) || env.timeoutMs || 12000);
   try {
     const r = await env.fetch(url, Object.assign({ signal: ctl && ctl.signal }, opt || {}));
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -400,9 +440,22 @@ const geocodeLayers = q => [
 ];
 async function geocode(q, env) {
   const ll = parseLatLon(q); if (ll) return { layer: 'lat,lon', value: ll, errors: [] };
+  if (env.known && env.known[q]) return { layer: 'picked', value: env.known[q], errors: [] };
   return runLayers('geocode "' + q + '"', geocodeLayers(q), env);
 }
 
+/* place suggestions (autocomplete): Photon is built for it; Nominatim forbids autocomplete, so it is only a slow fallback */
+function photonLabel(f) {
+  const p = f.properties || {}, parts = [p.name, p.street && p.housenumber ? p.street + ' ' + p.housenumber : p.street, p.city || p.town || p.village || p.district, p.state, p.country].filter(Boolean);
+  return parts.filter((x, i) => parts.indexOf(x) === i).join(', ');
+}
+async function suggest(q, env) {
+  return runLayers('suggest "' + q + '"', [
+    { id: 'photon', fn: async e => { const j = await getJSON(e, 'https://photon.komoot.io/api/?limit=6&lat=52&lon=6&q=' + encodeURIComponent(q)); const out = (j.features || []).map(f => ({ label: photonLabel(f), ll: [f.geometry.coordinates[1], f.geometry.coordinates[0]] })); if (!out.length) throw new Error('no hit'); return out; } },
+    { id: 'nominatim', fn: async e => { const j = await getJSON(e, 'https://nominatim.openstreetmap.org/search?format=json&limit=5&q=' + encodeURIComponent(q)); if (!j.length) throw new Error('no hit'); return j.map(x => ({ label: x.display_name, ll: [+x.lat, +x.lon] })); } },
+    { id: 'gazetteer', fn: async () => { const k = Object.keys(GAZ).filter(n => n.startsWith(q.trim().toLowerCase())); if (!k.length) throw new Error('none'); return k.map(n => ({ label: n[0].toUpperCase() + n.slice(1), ll: GAZ[n] })); } },
+  ], env);
+}
 /* routing */
 const routeLayers = pts => [
   { id: 'osrm', fn: async env => {
@@ -436,11 +489,11 @@ function chunkSteps(coords, d) { // split straight line in ~5 km pieces so count
 async function route(pts, env) { return runLayers('route', routeLayers(pts), env); }
 
 /* classify: Overpass -> Overpass mirror -> OSRM-step heuristic */
-function overpassQuery(coords) {
-  const { pts, total } = resample(coords, Math.max(250, coords.length ? pathLen(coords) / 350 : 250));
+function overpassQuery(coords, minStep, nPts) {
+  const { pts, total } = resample(coords, Math.max(minStep || 300, coords.length ? pathLen(coords) / (nPts || 250) : 300));
   const around = pts.map(x => x.p[0].toFixed(5) + ',' + x.p[1].toFixed(5)).join(',');
   const re = '^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$';
-  return '[out:json][timeout:40];way(around:15,' + around + ')[highway~"' + re + '"];out tags geom qt;node(around:15,' + around + ')[highway=traffic_signals];out qt;';
+  return '[out:json][timeout:50];way(around:15,' + around + ')[highway~"' + re + '"];out tags geom qt;node(around:15,' + around + ')[highway=traffic_signals];out qt;';
 }
 function segmentsFromOverpass(coords, data) {
   const ways = data.elements.filter(e => e.type === 'way' && e.geometry && e.geometry.length > 1).map(w => {
@@ -504,18 +557,164 @@ function classifyFromSteps(r) {
   });
   return mergeTiny(segs);
 }
+/* ---------- route anatomy: steps -> clusters -> checkpoints -> targeted probes ---------- */
+const AN_DEFAULT = { smallM: 300, quarterKm: 50, eighthKm: 200, sixteenthKm: 400, bigM: 2000, cityKmh: 30 };
+const CLS = ['residential', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway'];
+const BAND_IDX = [0, 1, 2, 3, 5];
+const medianOf = a => { const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+const bandOf = (len, an) => len <= an.smallM ? 0 : len <= 2 * an.smallM ? 1 : len <= 3000 ? 2 : len <= 20000 ? 3 : 4;
+function pointAt(coords, frac) {
+  if (!coords.length) return null;
+  const tot = pathLen(coords), target = clamp(frac, 0, 1) * tot; let acc = 0;
+  for (let i = 1; i < coords.length; i++) { const d = hav(coords[i - 1], coords[i]); if (acc + d >= target) { const t = d ? (target - acc) / d : 0; return [coords[i - 1][0] + (coords[i][0] - coords[i - 1][0]) * t, coords[i - 1][1] + (coords[i][1] - coords[i - 1][1]) * t]; } acc += d; }
+  return coords[coords.length - 1];
+}
+const stepLabel = s => s.ref && s.name ? s.ref + ' · ' + s.name : (s.ref || s.name || '(unnamed)');
+function normSteps(rt) {
+  let raw = (rt.steps || []).filter(s => s.dist > 0 && s.coords && s.coords.length);
+  if (!raw.length && rt.segs) raw = rt.segs.map(s => ({ dist: s.len, dur: s.len / (C_LIM(s) / 3.6), name: s.name, ref: '', coords: s.pts }));
+  const m = [];
+  raw.forEach(s => { const p = m[m.length - 1]; if (p && (s.name || s.ref) && p.name === s.name && p.ref === s.ref) { p.dist += s.dist; p.dur += s.dur; p.coords = p.coords.concat(s.coords); } else m.push({ name: s.name || '', ref: s.ref || '', dist: s.dist, dur: s.dur || 0, coords: s.coords.slice() }); });
+  let acc = 0; m.forEach((s, i) => { s.i = i; s.startM = acc; acc += s.dist; s.endM = acc; s.label = stepLabel(s); s.v = s.dur > 0 ? s.dist / s.dur : null; });
+  return m;
+}
+const C_LIM = s => limitKmh({ limit: s.limit, hw: s.hw, country: s.country });
+function guessClass(cl, L) {
+  const ref = cl.refs.find(Boolean) || '';
+  const v = cl.avgV || 0, sIdx = v >= 25 ? 5 : v >= 19 ? 4 : v >= 14 ? 3 : v >= 9 ? 2 : v >= 6 ? 1 : 0;
+  let idx, conf, why;
+  if (/^(A|E)\s?\d/.test(ref)) { idx = 5; conf = 'high'; why = 'ref ' + ref; }
+  else if (/^(N|B)\s?\d/.test(ref)) { idx = v >= 19 ? 4 : 3; conf = 'high'; why = 'ref ' + ref; }
+  else if (/^(L|K|S)\s?\d/.test(ref)) { idx = 2; conf = 'med'; why = 'ref ' + ref; }
+  else { idx = Math.round(0.5 * BAND_IDX[cl.band] + 0.5 * sIdx); conf = Math.abs(BAND_IDX[cl.band] - sIdx) <= 1 ? 'med' : 'low'; why = 'steps ~' + Math.round(cl.medLen) + ' m, ' + Math.round(v * 3.6) + ' km/h avg'; }
+  if (cl.edge && cl.band <= 1 && !/^(A|E|N|B)\s?\d/.test(ref)) { idx = 0; conf = 'med'; why = 'start/end neighbourhood streets'; }
+  const kind = idx === 5 ? 'motorway / long-distance' : idx >= 3 && cl.band >= 3 ? 'N-road / main road' : cl.band === 0 ? (cl.edge ? 'neighbourhood streets (start/end)' : 'neighbourhood streets') : cl.band === 1 ? (cl.edge ? 'connector streets (ontsluiting)' : 'inner-city streets, bigger') : cl.band === 2 ? (cl.edge && cl.len < 3000 ? 'ontsluitingsweg' : 'local / rural roads') : 'N-road / main road';
+  return { idx, hw: CLS[idx], conf, why, kind };
+}
+function analyze(rt, anIn) {
+  const an = Object.assign({}, AN_DEFAULT, anIn || {}), steps = normSteps(rt), n = steps.length;
+  if (!n) return null;
+  const L = steps[n - 1].endM, lens = steps.map(s => s.dist);
+  const band = steps.map((s, i) => { const w = []; for (let k = Math.max(0, i - 2); k <= Math.min(n - 1, i + 2); k++) w.push(lens[k]); const med = medianOf(w); return (s.dist >= 1500 && s.dist >= 4 * med) ? bandOf(s.dist, an) : bandOf(med, an); });
+  const clusters = []; let cur = null;
+  steps.forEach((s, i) => { if (!cur || cur.band !== band[i]) { cur = { id: clusters.length + 1, band: band[i], a: i, b: i }; clusters.push(cur); } else cur.b = i; s.ci = cur.id; });
+  clusters.forEach(cl => {
+    const ss = steps.slice(cl.a, cl.b + 1);
+    cl.startM = ss[0].startM; cl.endM = ss[ss.length - 1].endM; cl.len = cl.endM - cl.startM; cl.n = ss.length;
+    cl.medLen = medianOf(ss.map(s => s.dist)); cl.dur = ss.reduce((a, s) => a + s.dur, 0); cl.avgV = cl.dur > 0 ? cl.len / cl.dur : 0;
+    cl.names = [...new Set(ss.map(s => s.label))].slice(0, 4); cl.refs = ss.map(s => s.ref);
+    cl.edge = cl.startM < 1500 || cl.endM > L - 1500;
+    cl.coords = ss.reduce((a, s) => a.concat(s.coords), []);
+    cl.g = guessClass(cl, L);
+  });
+  const notes = [], km = L / 1000;
+  const longest = clusters.slice().sort((a, b) => b.len - a.len)[0];
+  if (km >= 100 && longest.g.idx < 4 && longest.len >= 20000) { longest.g.idx = 4; longest.g.hw = CLS[4]; longest.g.why += ' + prior: 100 km+ trips almost always ride a main road/motorway for the longest stretch'; notes.push('100 km+ prior applied to cluster ' + longest.id); }
+  if (km >= 30 && !clusters.some(c => c.g.idx >= 3 && c.len >= 3000)) {
+    const cand = clusters.filter(c => c.len >= 3000).sort((a, b) => b.avgV - a.avgV)[0];
+    if (cand) { cand.g.idx = Math.max(cand.g.idx, 3); cand.g.hw = CLS[cand.g.idx]; cand.g.why += ' + prior: 30 km+ trips very likely include an N-road or higher'; notes.push('30 km+ prior applied to cluster ' + cand.id); }
+  }
+  const deltas = [];
+  for (let i = 1; i < clusters.length; i++) {
+    const A = clusters[i - 1], B = clusters[i], s = steps;
+    deltas.push({ atM: B.startM, fromCl: A.id, toCl: B.id, before: [s[B.a - 2], s[B.a - 1]].filter(Boolean).map(x => x.label), after: [s[B.a], s[B.a + 1]].filter(Boolean).map(x => x.label), kmFromStart: B.startM / 1000, kmToEnd: (L - B.startM) / 1000 });
+  }
+  const cum = [0]; steps.forEach(s => cum.push(cum[cum.length - 1] + s.dur));
+  const timeAt = m => { const s = steps.find(x => m <= x.endM) || steps[n - 1]; return cum[s.i] + s.dur * clamp((m - s.startM) / (s.dist || 1), 0, 1); };
+  clusters.forEach(cl => { cl.mid = (cl.startM + cl.endM) / 2; });
+  clusters.forEach((cl, i) => {
+    cl.bridge = [1, 2].map(k => clusters[i + k] ? { to: clusters[i + k].id, distM: clusters[i + k].mid - cl.endM, sec: timeAt(clusters[i + k].mid) - timeAt(cl.endM) } : null).filter(Boolean);
+    const ss = steps.slice(cl.a, cl.b + 1), sm = s => [s.coords[Math.floor(s.coords.length / 2)], (s.startM + s.endM) / 2];
+    cl.samples = [];
+    const addS = (kind, s) => { const [p, m] = sm(s); cl.samples.push({ kind, p, km: m / 1000, step: s.i }); };
+    ss.slice(0, 2).forEach(s => addS('first', s)); ss.slice(-2).forEach(s => addS('last', s)); addS('middle', ss[Math.floor(ss.length / 2)]);
+    const k = clamp(Math.floor(cl.len / 5000), 0, 3); for (let r = 1; r <= k; r++) addS('random', ss[Math.floor(((Math.sin(cl.id * 12.9898 + r * 78.233) * 43758.5453) % 1 + 1) % 1 * ss.length)]);
+    cl.turns = ss.length;
+  });
+  // checkpoints
+  const cps = []; const stepAt = m => steps.find(s => m < s.endM) || steps[n - 1];
+  const add = (key, label, atM, si) => { const s = si != null ? steps[si] : stepAt(atM); if (atM == null) atM = (s.startM + s.endM) / 2; if (cps.some(c => c.key === key)) return; cps.push({ key, label, atM, si: s.i, ci: s.ci, kmFromStart: atM / 1000, kmToEnd: (L - atM) / 1000, road: s.label, len: s.dist, dur: s.dur, v: s.v, prev: steps[s.i - 1] ? steps[s.i - 1].label : null, next: steps[s.i + 1] ? steps[s.i + 1].label : null, toChangeBefore: atM - s.startM, toChangeAfter: s.endM - atM, p: pointAt(rt.coords, atM / L), guess: clusters[s.ci - 1].g.hw }); };
+  [0, 1].forEach(k => steps[k] && add('first' + (k + 1), 'Road ' + (k + 1) + ' of the route', null, k));
+  [1, 0].forEach(k => steps[n - 1 - k] && add(k ? 'penult' : 'last', k ? 'Second-to-last road' : 'Last road', null, n - 1 - k));
+  add('mid-dist', 'Middle by distance', L / 2);
+  add('mid-count', 'Middle by number of roads', null, Math.floor((n - 1) / 2));
+  const fr = new Set(); const levels = [[an.quarterKm, 4], [an.eighthKm, 8], [an.sixteenthKm, 16]];
+  levels.forEach(([thr, d]) => { if (km > thr) for (let k = 1; k < d; k++) fr.add(Math.round(k / d * 1e6) / 1e6); });
+  [...fr].sort((a, b) => a - b).forEach(f => { if (f !== 0.5) add('f' + f, 'At ' + (f * 100).toFixed(f * 100 % 1 ? 1 : 0) + '% of the route', f * L); });
+  const lg = steps.slice().sort((a, b) => b.dist - a.dist)[0], sh = steps.slice().sort((a, b) => a.dist - b.dist)[0];
+  add('longest', 'Longest road', null, lg.i); if (lg.i > 0) add('longest-1', 'Road before the longest', null, lg.i - 1);
+  add('shortest', 'Shortest road', null, sh.i); if (sh.i > 0) add('shortest-1', 'Road before the shortest', null, sh.i - 1);
+  cps.sort((a, b) => a.atM - b.atM);
+  return { an, L, steps, clusters, deltas, checkpoints: cps, longest: lg.label, shortest: sh.label, notes, probed: false };
+}
+/* ---------- depth ladder ---------- */
+const classByAvg = v => CLS[v >= 25 ? 5 : v >= 19 ? 4 : v >= 14 ? 3 : v >= 9 ? 2 : v >= 6 ? 1 : 0];
+function levelSeg(name, hw, coords, len, avgKmh, limit) { return splitByCountry({ name, hw, limit: limit || null, unlimited: false, country: 'NL', len, signals: null, avgKmh, pts: coords, src: '' }); }
+function level0(A, rt) { // OSRM total time only
+  const dur = A.steps.reduce((a, s) => a + s.dur, 0), v = A.L / dur;
+  return levelSeg('Whole route (one road, OSRM average speed)', classByAvg(v), rt.coords, A.L, v * 3.6).map((s, i) => Object.assign(s, { id: i + 1, src: 'L0', capAvg: true }));
+}
+function level1(A) { // first/last big road; before/after = city movement at cityKmh
+  const an = A.an, big = an.bigM || 2000, city = an.cityKmh || 30, S = A.steps;
+  const fi = S.findIndex(s => s.dist >= big); let li = -1; S.forEach((s, i) => { if (s.dist >= big) li = i; });
+  const out = [], seg = (a, b, name, hw, avg, cap) => { if (b < a) return; const ss = S.slice(a, b + 1), len = ss.reduce((x, s) => x + s.dist, 0), coords = ss.reduce((x, s) => x.concat(s.coords), []); levelSeg(name, hw, coords, len, avg).forEach(x => out.push(Object.assign(x, { src: 'L1', capAvg: !!cap }))); };
+  if (fi < 0) { seg(0, S.length - 1, 'City movement (no big road found)', 'residential', city); }
+  else {
+    seg(0, fi - 1, 'City movement (start)', 'residential', city);
+    const mid = S.slice(fi, li + 1), top = mid.slice().sort((a, b) => b.dist - a.dist)[0], len = mid.reduce((x, s) => x + s.dist, 0), dur = mid.reduce((x, s) => x + s.dur, 0), v = dur ? len / dur : 20;
+    const ref = top.ref || '', hw = /^(A|E)\s?\d/.test(ref) ? 'motorway' : /^(N|B)\s?\d/.test(ref) ? (v >= 19 ? 'trunk' : 'primary') : classByAvg(v);
+    seg(fi, li, 'Long-distance part: ' + top.label, hw, v * 3.6, true);
+    seg(li + 1, S.length - 1, 'City movement (end)', 'residential', city);
+  }
+  return out.map((s, i) => Object.assign(s, { id: i + 1 }));
+}
+function probePoints(A) {
+  const pts = []; const seen = new Set();
+  const push = (p, ci, key) => { if (!p) return; const k = p[0].toFixed(4) + ',' + p[1].toFixed(4); if (seen.has(k)) return; seen.add(k); pts.push({ p, ci, key }); };
+  A.checkpoints.forEach(c => push(c.p, c.ci, c.key));
+  A.clusters.forEach(cl => { cl.samples.forEach(s => push(s.p, cl.id)); if (cl.len > 8000) { push(pointAt(cl.coords, 0.25), cl.id); push(pointAt(cl.coords, 0.75), cl.id); } });
+  return pts.slice(0, 90);
+}
+const HW_RE = '^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$';
+async function probeLookup(pts, env, url) {
+  const q = '[out:json][timeout:30];(' + pts.map(p => 'way(around:14,' + p[0].toFixed(5) + ',' + p[1].toFixed(5) + ')[highway~"' + HW_RE + '"];').join('') + ');out tags geom qt;';
+  const j = await getJSON(env, url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q), timeoutMs: 30000 });
+  if (!j.elements) throw new Error('bad reply');
+  const ways = j.elements.filter(e => e.type === 'way' && e.geometry).map(w => ({ tags: w.tags || {}, g: w.geometry.map(x => [x.lat, x.lon]) }));
+  return pts.map(P => { let best = null, bd = 1e9; ways.forEach(w => { let d = 1e9; for (let k = 1; k < w.g.length; k++) d = Math.min(d, distPtSeg(P, w.g[k - 1], w.g[k])); if (d < bd) { bd = d; best = w; } }); if (!best || bd > 30) return null; const ms = parseMaxspeed(best.tags.maxspeed || best.tags['maxspeed:forward']); return { hw: best.tags.highway, limit: ms.limit, unlimited: !!ms.unlimited, ref: best.tags.ref || '', name: best.tags.name || '', dist: Math.round(bd) }; });
+}
+const mode = a => { const m = {}; a.forEach(x => m[x] = (m[x] || 0) + 1); let b = null, bc = 0; for (const k in m) if (m[k] > bc) { b = k; bc = m[k]; } return b; };
+function splitByCountry(seg) {
+  if (!seg.pts || seg.pts.length < 2) return [seg];
+  const r = resample(seg.pts, Math.max(200, pathLen(seg.pts) / 60)); const runs = []; let cur = null;
+  r.pts.forEach((x, i) => { const c = countryAt(x.p[0], x.p[1]); if (!cur || cur.country !== c) { cur = { country: c, from: i, to: i }; runs.push(cur); } else cur.to = i; });
+  if (runs.length === 1) { seg.country = runs[0].country; return [seg]; }
+  const tot = r.pts.length; return runs.map(rn => Object.assign({}, seg, { country: rn.country, len: seg.len * (rn.to - rn.from + 1) / tot, signals: null, pts: seg.pts.slice(Math.floor(rn.from / tot * seg.pts.length), Math.ceil((rn.to + 1) / tot * seg.pts.length) + 1) }));
+}
+function buildSegments(A, probes) {
+  const out = [];
+  A.clusters.forEach(cl => {
+    const mine = (probes || []).filter(p => p.ci === cl.id && p.r);
+    let hw = cl.g.hw, limit = null, unlimited = false, src = 'guess', ref = '';
+    if (mine.length) { hw = mode(mine.map(p => p.r.hw)); const L = mine.filter(p => p.r.hw === hw && p.r.limit).map(p => p.r.limit); if (L.length) limit = +mode(L); else unlimited = mine.some(p => p.r.unlimited); src = 'probed ×' + mine.length; ref = (mine.find(p => p.r.ref) || { r: {} }).r.ref; }
+    const seg = { name: (ref ? ref + ' · ' : '') + cl.names.slice(0, 2).join(', '), hw, limit, unlimited, country: 'NL', len: cl.len, signals: null, pts: cl.coords, cluster: cl.id, src, estimated: src === 'guess' };
+    splitByCountry(seg).forEach(s => out.push(s));
+  });
+  return out.map((s, i) => Object.assign(s, { id: i + 1 }));
+}
 async function classify(rt, env) {
-  const post = url => async e => {
-    const body = 'data=' + encodeURIComponent(overpassQuery(rt.coords));
-    const j = await getJSON(e, url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
-    if (!j.elements) throw new Error('bad reply');
-    const segs = segmentsFromOverpass(rt.coords, j); if (!segs.length) throw new Error('no segments'); return segs;
+  const modeSel = env.mode || 'smart', A = analyze(rt, env.an);
+  const full = url => async e => { const body = 'data=' + encodeURIComponent(overpassQuery(rt.coords, url.step, url.n)); const j = await getJSON(e, url.u, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body, timeoutMs: 45000 }); if (!j.elements) throw new Error('bad reply'); const segs = segmentsFromOverpass(rt.coords, j); if (!segs.length) throw new Error('no segments'); return { segs, analysis: A }; };
+  const smart = u => async e => { if (!A) throw new Error('no steps'); const pts = probePoints(A); const res = await probeLookup(pts.map(x => x.p), e, u); const pr = pts.map((x, i) => ({ ci: x.ci, key: x.key, r: res[i], p: x.p })); pr.forEach(p => { const cp = p.key && A.checkpoints.find(c => c.key === p.key); if (cp) cp.probe = p.r; }); A.probed = true; A.probes = pr.length; A.probeHits = pr.filter(p => p.r).length; if (!A.probeHits) throw new Error('no probe matched a road'); return { segs: buildSegments(A, pr), analysis: A }; };
+  const guess = async () => { if (!A) throw new Error('no steps'); return { segs: buildSegments(A, []), analysis: A }; };
+  const heur = async () => { const s = classifyFromSteps(rt); if (!s.length) throw new Error('no steps'); return { segs: s, analysis: A }; };
+  const OP = 'https://overpass-api.de/api/interpreter', MI = 'https://overpass.kumi.systems/api/interpreter';
+  const L = {
+    smart: { id: 'smart-probes', fn: smart(OP) }, smart2: { id: 'smart-probes-mirror', fn: smart(MI) }, guess: { id: 'cluster-guess', fn: guess }, heur: { id: 'osrm-step-heuristic', fn: heur },
+    full: { id: 'overpass', fn: full({ u: OP, step: 300, n: 250 }) }, full2: { id: 'overpass-mirror', fn: full({ u: MI, step: 300, n: 250 }) }, light: { id: 'overpass-light', fn: full({ u: OP, step: 800, n: 90 }) },
   };
-  return runLayers('classify', [
-    { id: 'overpass', fn: post('https://overpass-api.de/api/interpreter') },
-    { id: 'overpass-mirror', fn: post('https://overpass.kumi.systems/api/interpreter') },
-    { id: 'osrm-step-heuristic', fn: async () => { const s = classifyFromSteps(rt); if (!s.length) throw new Error('no steps'); return s; } },
-  ], env);
+  const order = modeSel === 'full' ? [L.full, L.full2, L.light, L.smart, L.guess, L.heur] : modeSel === 'guess' ? [L.guess, L.heur] : [L.smart, L.smart2, L.guess, L.heur, L.full];
+  return runLayers('classify', order, env);
 }
 
 /* kenteken (RDW open data, CC0). width/height are NOT in RDW. */
@@ -564,11 +763,12 @@ async function planRoute(places, env) {
   const pts = [];
   for (const q of places) { const g = await geocode(q, env); pts.push(g.value); info.geocode.push(g.layer); info.places.push({ q, ll: g.value }); }
   const r = await route(pts, env);
+  if (env.onStage) { try { env.onStage({ route: r.value, routeLayer: r.layer, pts, analysis: analyze(r.value, env.an) }); } catch (e) {} }
   const c = await classify(r.value, env).catch(e => ({ layer: 'none', value: null, errors: e.errs || [String(e)] }));
-  return { pts, info, routeLayer: r.layer, route: r.value, classLayer: c.layer, segs: c.value, notes: [].concat(r.errors, c.errors || []) };
+  return { pts, info, routeLayer: r.layer, route: r.value, classLayer: c.layer, segs: c.value && c.value.segs, analysis: (c.value && c.value.analysis) || analyze(r.value, env.an), notes: [].concat(r.errors, c.errors || []) };
 }
 
-const api = { lerpTab, bonnetKind, lookupPlate, PLATE_CACHE, PRESETS, TYRE_CRR, DEFAULT_PARAMS, HW, DEF_LIMIT, PROFILES, estimateCd, frontalArea, crr, totalMass, cruise, stopCost, parseMaxspeed, limitKmh, computeSegment, computeRoute, hav, pathLen, resample, countryAt, decodePoly6, runLayers, geocode, route, classify, classifyFromSteps, segmentsFromOverpass, overpassQuery, sampleRoute, planRoute, GAZ, clamp };
+const api = { level0, level1, AN_DEFAULT, analyze, normSteps, pointAt, buildSegments, suggest, lerpTab, bonnetKind, lookupPlate, PLATE_CACHE, PRESETS, TYRE_CRR, DEFAULT_PARAMS, HW, DEF_LIMIT, PROFILES, estimateCd, frontalArea, crr, totalMass, cruise, stopCost, parseMaxspeed, limitKmh, computeSegment, computeRoute, hav, pathLen, resample, countryAt, decodePoly6, runLayers, geocode, route, classify, classifyFromSteps, segmentsFromOverpass, overpassQuery, sampleRoute, planRoute, GAZ, clamp };
 root.Core = api; if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -582,7 +782,7 @@ const KEY='tripfuel.v2';
 const HWN={motorway:'motorway',trunk:'trunk',primary:'primary',secondary:'secondary',tertiary:'tertiary',unclassified:'unclassified',residential:'residential',living_street:'living street',service:'service',motorway_link:'motorway link',trunk_link:'trunk link',primary_link:'primary link',secondary_link:'secondary link',tertiary_link:'tertiary link'};
 const clone=o=>JSON.parse(JSON.stringify(o));
 let S={car:(()=>{const c=clone(C.PRESETS.partner);delete c.calib;return c})(),presetKey:'partner',params:Object.assign(clone(C.DEFAULT_PARAMS),{calib:C.PRESETS.partner.calib}),prices:{NL:2.449,DE:2.348,BE:1.988},
- profiles:clone(C.PROFILES),profileKey:'limit',places:['Wesel','Dieren'],round:true,trips:[],
+ profiles:clone(C.PROFILES),profileKey:'limit',places:['Wesel','Dieren'],known:{},mode:'smart',an:clone(C.AN_DEFAULT),drives:[],round:true,trips:[],
  budget:[{name:'Social security (example — edit)',amt:800,kind:'income'},{name:'Other fixed costs',amt:0,kind:'fixed'}],tab:'car',disabled:{},offline:false};
 let plan=null,segs=[],log=[],nextId=1;
 try{const r=JSON.parse(localStorage.getItem(KEY)||'null');if(r&&r.car){S=Object.assign(S,r);S.params=Object.assign(clone(C.DEFAULT_PARAMS),r.params||{});S.params.stopP=Object.assign({},C.DEFAULT_PARAMS.stopP,(r.params||{}).stopP);S.params.sigPerKm=Object.assign({},C.DEFAULT_PARAMS.sigPerKm,(r.params||{}).sigPerKm)}}catch(e){}
@@ -595,10 +795,10 @@ function lg(stage,layer,msg,cls){log.unshift({t:new Date().toLocaleTimeString(),
 function renderLog(){const el=$('log');if(!el)return;el.innerHTML=log.length?log.map(l=>`<div class="${l.cls}">${l.t} ${esc(l.stage)} › ${esc(l.layer)} — ${esc(l.msg)}</div>`).join(''):'<span class="sub">Nothing yet.</span>'}
 
 /* ---------- tabs ---------- */
-const TABS=[['car','Car'],['route','Route'],['trips','Trips & budget'],['debug','Debug']];
+const TABS=[['car','Car'],['route','Route'],['trips','Trips & budget'],['drives','Drives'],['debug','Debug']];
 $('tabs').innerHTML=TABS.map(t=>`<button role="tab" data-t="${t[0]}">${t[1]}</button>`).join('');
 $('tabs').onclick=e=>{const t=e.target.dataset&&e.target.dataset.t;if(t)showTab(t)};
-function showTab(t){S.tab=t;TABS.forEach(x=>{$('tab-'+x[0]).hidden=x[0]!==t});[...$('tabs').children].forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));if(t==='trips')renderTrips();if(t==='debug')renderDebug();save()}
+function showTab(t){S.tab=t;TABS.forEach(x=>{$('tab-'+x[0]).hidden=x[0]!==t});[...$('tabs').children].forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));if(t==='trips')renderTrips();if(t==='drives')renderDrives();if(t==='debug')renderDebug();save()}
 
 /* ---------- CAR tab ---------- */
 const CTL=[
@@ -714,20 +914,24 @@ $('calReset').onclick=()=>{S.params.calib=(C.PRESETS[S.presetKey]||{}).calib||1;
 
 /* ---------- ROUTE tab ---------- */
 function buildPlaces(){
- const P=S.places;$('places').innerHTML=P.map((q,i)=>{const lab=i===0?'From':i===P.length-1?'To':'Via '+i;return `<div class="row" style="flex-wrap:nowrap"><label class="f" style="flex:1"><span>${lab}</span><input type="text" data-i="${i}" value="${esc(q)}" placeholder="place name or lat,lon"></label>${i>0&&i<P.length-1?`<button class="b g sm" data-del="${i}" aria-label="remove via">✕</button>`:''}</div>`}).join('');
+ const P=S.places;$('places').innerHTML=P.map((q,i)=>{const lab=i===0?'From':i===P.length-1?'To':'Via '+i;return `<div class="row" style="flex-wrap:nowrap"><label class="f" style="flex:1"><span>${lab}</span><input type="text" data-i="${i}" value="${esc(q)}" placeholder="start typing a place…" list="placeList" autocomplete="off"></label>${i>0&&i<P.length-1?`<button class="b g sm" data-del="${i}" aria-label="remove via">✕</button>`:''}</div>`}).join('');
 }
-$('places').addEventListener('input',e=>{const i=e.target.dataset.i;if(i!=null){S.places[+i]=e.target.value;save()}});
+let sugT=null,sugSeq=0;
+$('places').addEventListener('input',e=>{const i=e.target.dataset.i;if(i==null)return;const q=e.target.value;S.places[+i]=q;save();
+ clearTimeout(sugT);if(q.trim().length<3||S.known[q]){return}
+ sugT=setTimeout(async()=>{const my=++sugSeq;try{const r=await C.suggest(q,env());if(my!==sugSeq)return;
+   r.value.forEach(s=>{S.known[s.label]=s.ll});$('placeList').innerHTML=r.value.map(s=>`<option value="${esc(s.label)}"></option>`).join('');save()}catch(err){}},450)});
 $('places').addEventListener('click',e=>{const d=e.target.dataset.del;if(d!=null){S.places.splice(+d,1);buildPlaces();save()}});
 $('addVia').onclick=()=>{S.places.splice(S.places.length-1,0,'');buildPlaces();save()};
 $('round').onchange=e=>{S.round=e.target.checked;save();calcRoute()};
-const env=()=>({fetch:(u,o)=>S.offline?Promise.reject(new Error('simulated offline')):fetch(u,o),disabled:S.disabled,log:lg,timeoutMs:12000});
-function setSample(init){const s=C.sampleRoute();plan={route:s,routeLayer:'built-in sample',classLayer:'built-in sample',geocode:['sample','sample'],notes:[],sample:true,pts:[s.coords[0],s.coords[s.coords.length-1]]};segs=clone(s.segs);if(!init){S.places=['Wesel','Dieren'];buildPlaces()}afterPlan()}
+const env=()=>({known:S.known,mode:S.mode,an:S.an,fetch:(u,o)=>S.offline?Promise.reject(new Error('simulated offline')):fetch(u,o),disabled:S.disabled,log:lg,timeoutMs:12000});
+function setSample(init){const s=C.sampleRoute();plan={route:s,routeLayer:'built-in sample',classLayer:'built-in sample',geocode:['sample','sample'],notes:[],sample:true,pts:[s.coords[0],s.coords[s.coords.length-1]],analysis:C.analyze(s,S.an)};segs=clone(s.segs);if(!init){S.places=['Wesel','Dieren'];buildPlaces()}afterPlan()}
 $('sampleBtn').onclick=()=>setSample(false);
 $('planBtn').onclick=async()=>{
  const b=$('planBtn');b.disabled=true;b.textContent='Planning…';$('planStat').innerHTML='<span class="sub">Looking up places, route and roads…</span>';
  try{
-  const p=await C.planRoute(S.places.filter(x=>x.trim()),env());
-  plan={route:p.route,routeLayer:p.routeLayer,classLayer:p.classLayer,geocode:p.info.geocode,notes:p.notes,pts:p.pts};
+  const p=await C.planRoute(S.places.filter(x=>x.trim()),Object.assign(env(),{onStage:st=>{plan={route:st.route,routeLayer:st.routeLayer,classLayer:'pending',geocode:['…'],notes:[],pts:st.pts,analysis:st.analysis,places:S.places.filter(x=>x.trim()),pending:true};segs=[];afterPlan()}}));
+  plan={route:p.route,routeLayer:p.routeLayer,classLayer:p.classLayer,geocode:p.info.geocode,notes:p.notes,pts:p.pts,analysis:p.analysis,places:S.places.filter(x=>x.trim())};
   segs=(p.segs||[{name:'Manual — edit me',hw:'secondary',limit:null,country:'NL',len:p.route.dist,signals:null,pts:p.route.coords}]).map(s=>Object.assign({},s));
   if(!p.segs)plan.classLayer='manual';
   afterPlan();
@@ -736,19 +940,47 @@ $('planBtn').onclick=async()=>{
  }
  b.disabled=false;b.textContent='Plan route';
 };
+let levels={},curLevel=null;
+const LV=[['L0','L0 · OSRM time only','one road, OSRM’s average speed'],['L1','L1 · big roads','first/last big road; city movement before/after'],['L2g','L2 · clusters (guess)','road groups from step lengths, no lookups'],['L2p','L2 · clusters + probes','same, confirmed at sampled points in OSM'],['L3','L3 · every road','all roads from OSM'],['sample','Sample','hand-drawn sample route']];
+function setLevels(){levels={};const A=plan&&plan.analysis;if(!A)return;try{levels.L0=C.level0(A,plan.route);levels.L1=C.level1(A);levels.L2g=C.buildSegments(A,[])}catch(e){lg('levels','build','FAILED — '+e.message,'fail')}}
+function showLevel(k){if(!levels[k])return;curLevel=k;segs=levels[k].map(s=>Object.assign({},s));segs.forEach((s,i)=>s.id=i+1);nextId=segs.length+1;buildSegTable();drawMap();calcRoute()}
+function renderLadder(){
+ const el=$('ladder');if(!levels||!Object.keys(levels).length){el.innerHTML='';return}
+ const mult=S.round?2:1,prof=S.profiles[S.profileKey],ref=['L3','L2p','L2g','sample'].find(k=>levels[k]);
+ const tot=k=>C.computeRoute(k===curLevel?segs:levels[k],S.car,S.params,S.prices,prof).total;
+ const rT=ref&&tot(ref);
+ el.innerHTML='<tr><th></th><th>Level</th><th>uses</th><th>segments</th><th>litres</th><th>€</th><th>time</th><th>vs deepest</th></tr>'+LV.filter(l=>levels[l[0]]).map(l=>{const T=tot(l[0]),d=rT?(T.L/rT.L-1)*100:0;return `<tr><td><button class="b ${l[0]===curLevel?'':'g'} sm" data-lv="${l[0]}">${l[0]===curLevel?'in use':'use'}</button></td><td>${l[1]}</td><td class="sub" style="white-space:normal;min-width:160px">${l[2]}</td><td class="mono">${(l[0]===curLevel?segs:levels[l[0]]).length}</td><td class="mono">${f1(T.L*mult)}</td><td class="mono">${eur(T.cost*mult)}</td><td class="mono">${mins(T.sec*mult)}</td><td class="mono">${l[0]===ref?'ref.':(d>0?'+':'')+f1(d,1)+'%'}</td></tr>`}).join('');
+ $('ladderNote').textContent='Same car, prices and speed profile for every row. If a cheap level lands within a few % of the deepest one, the deeper lookups aren’t needed for that kind of route.';
+}
+$('ladder').addEventListener('click',e=>{const k=e.target.dataset.lv;if(k)showLevel(k)});
+$('runFull').onclick=async()=>{
+ if(!plan||!plan.route)return;const b=$('runFull');b.disabled=true;b.textContent='Looking up every road…';
+ try{const r=await C.classify(plan.route,Object.assign(env(),{mode:'full'}));
+  if(/^overpass/.test(r.layer)){levels.L3=r.value.segs;showLevel('L3');$('ladderNote').textContent='Full lookup done ('+r.layer+').'}
+  else{$('ladderNote').textContent='Full lookup not reachable — fell back to '+r.layer+'. Keeping the current level.'}
+ }catch(e){$('ladderNote').textContent='Full lookup failed: '+e.message}
+ b.disabled=false;b.textContent='Run L3: look up every road';
+};
 function afterPlan(){
+ setLevels();
+ const kind=plan.sample?'sample':/^overpass/.test(plan.classLayer)?'L3':/^smart-probes/.test(plan.classLayer)?'L2p':'L2g';
+ if(kind!=='L2g'||!levels.L2g)levels[kind]=segs.map(s=>Object.assign({},s));
+ curLevel=kind;segs=levels[kind].map(s=>Object.assign({},s));
  nextId=segs.length+1;segs.forEach((s,i)=>s.id=i+1);
  const pill=(l,ok)=>`<span class="pill ${ok}">${esc(l)}</span>`;
- const fb=(l,first)=>pill(l,l===first?'ok':(l==='manual'||l==='straight-line'||l==='built-in sample'||l==='gazetteer'||l==='osrm-step-heuristic')?'fb':'ok');
+ const fb=(l,first)=>pill(l,l===first?'ok':(l==='manual'||l==='straight-line'||l==='built-in sample'||l==='gazetteer'||l==='osrm-step-heuristic'||l==='cluster-guess')?'fb':'ok');
  const live=plan.routeLayer==='osrm'||plan.routeLayer==='valhalla';
  let h=`<div class="row" style="gap:6px"><span class="sub">places</span>${[...new Set(plan.geocode)].map(l=>fb(l,'nominatim')).join('')}<span class="sub">route</span>${fb(plan.routeLayer,'osrm')}<span class="sub">roads</span>${fb(plan.classLayer,'overpass')}</div>`;
- if(plan.sample)h+='<div class="note" style="margin-top:8px">Sample route, drawn by hand from typical roads (B8 → A3 → A12 → A348). Approximate; edit the table below.</div>';
+ if(plan.pending)h+='<div class="note" style="margin-top:8px">Quick estimates are on screen (L0–L2). Now looking up key points in OSM to sharpen them…</div>';
+ else if(plan.sample)h+='<div class="note" style="margin-top:8px">Sample route, drawn by hand from typical roads (B8 → A3 → A12 → A348). Approximate; edit the table below.</div>';
  else if(plan.routeLayer==='straight-line')h+='<div class="note" style="margin-top:8px">Live routing is not reachable from here, so this is a straight line ×1.25 split into pieces. Road types are guessed — fix them in the table, or open the app in a normal browser tab.</div>';
- else if(plan.classLayer!=='overpass'&&plan.classLayer!=='overpass-mirror')h+='<div class="note" style="margin-top:8px">Route is live, but the OSM road-type lookup (Overpass) failed. Road types are estimated from the route’s own road refs and speeds — check the table.</div>';
+ else if(plan.classLayer==='smart-probes'||plan.classLayer==='smart-probes-mirror')h+=`<div class="note" style="margin-top:8px">Road types guessed from the route’s steps, then confirmed at ${plan.analysis.probeHits}/${plan.analysis.probes} key points from OSM.</div>`;
+ else if(plan.classLayer==='cluster-guess')h+='<div class="note" style="margin-top:8px">OSM lookups were not reachable, so road types are guessed from the shape of the route (step lengths, speeds, road numbers). Check the table.</div>';
+ else if(plan.classLayer!=='overpass'&&plan.classLayer!=='overpass-mirror'&&plan.classLayer!=='overpass-light')h+='<div class="note" style="margin-top:8px">Route is live, but the OSM road-type lookup (Overpass) failed. Road types are estimated from the route’s own road refs and speeds — check the table.</div>';
  if(plan.notes&&plan.notes.length)h+=`<details class="sub"><summary>${plan.notes.length} fallback note(s)</summary>${plan.notes.map(n=>`<div class="mono">${esc(n)}</div>`).join('')}</details>`;
  $('planStat').innerHTML=h;
  $('tripLabel').value=S.places.filter(x=>x.trim()).join(' → ');
- buildSegTable();drawMap();calcRoute();
+ buildSegTable();drawMap();calcRoute();renderAnatomy();
 }
 function buildSegTable(){
  const hwOpts=k=>Object.keys(HWN).map(h=>`<option value="${h}"${h===k?' selected':''}>${HWN[h]}</option>`).join('');
@@ -775,7 +1007,7 @@ function calcRoute(){
  const bc=Object.entries(T.byCountry).map(([k,v])=>`${k}: ${f1(v.km*mult)} km · ${f1(v.L*mult)} L · ${eur(v.cost*mult)}`).join('<br>');
  $('tot').innerHTML=`<div class="row" style="gap:24px"><div><div class="sub">${S.round?'Round trip':'One way'} · ${esc(S.profiles[S.profileKey].label)}</div><div class="big">${eur(T.cost*mult)}</div></div><div><div class="sub">Fuel</div><div class="big">${f1(T.L*mult)} L</div></div><div><div class="sub">Distance</div><div class="big">${f1(T.km*mult,0)} km</div></div></div><div class="sub mono" style="margin-top:6px">${bc}<br>≈ ${f1(T.stops*mult,1)} expected light stops · ${mins(T.sec*mult)} driving</div>`;
  document.querySelectorAll('#segTab tr[data-i]').forEach(tr=>{const r=R.rows[+tr.dataset.i];if(!r)return;tr.querySelector('[data-o=v]').textContent=Math.round(r.v);tr.querySelector('[data-o=L]').textContent=r.L.toFixed(2);tr.querySelector('[data-o=c]').textContent=r.cost.toFixed(2)});
- window._last={out,mult};
+ window._last={out,mult};renderLadder();
 }
 $('pcards').onclick=e=>{const b=e.target.closest('.pc');if(b){S.profileKey=b.dataset.k;save();calcRoute()}};
 /* map */
@@ -823,6 +1055,35 @@ $('saveTrip').onclick=()=>{
  save();$('saveStat').textContent='added ✓';setTimeout(()=>$('saveStat').textContent='',2500);
 };
 
+/* ---------- ANATOMY ---------- */
+function bindAn(){$('mode').value=S.mode;['smallM','quarterKm','eighthKm','sixteenthKm','bigM','cityKmh'].forEach(k=>$('an_'+k).value=S.an[k])}
+$('mode').onchange=e=>{S.mode=e.target.value;save()};
+['smallM','quarterKm','eighthKm','sixteenthKm','bigM','cityKmh'].forEach(k=>$('an_'+k).oninput=e=>{const v=+e.target.value;if(v>0){S.an[k]=v;save()}});
+const kmf=m=>f1(m/1000,1),mf=m=>Math.round(m).toLocaleString('en'),kph=v=>v?Math.round(v*3.6):'–';
+function renderAnatomy(){
+ const A=plan&&plan.analysis,el=$('anat');
+ if(!A){el.innerHTML='<div class="sub">Plan a route to see its anatomy.</div>';return}
+ const segOf=id=>segs.filter(s=>s.cluster===id);
+ let h=`<div class="sub" style="margin-bottom:8px">${kmf(A.L)} km · ${A.steps.length} roads · ${A.clusters.length} clusters · longest road <b>${esc(A.longest)}</b> · shortest <b>${esc(A.shortest)}</b>${A.notes.length?' · '+esc(A.notes.join('; ')):''}</div>`;
+ h+='<h3>Clusters (guess → probe) · roads = number of turns</h3><div class="scroll"><table><tr><th>#</th><th>km</th><th>length</th><th>roads</th><th>median step</th><th>avg km/h</th><th>kind</th><th>guess</th><th>conf.</th><th>final</th><th>→ next mid</th><th>→ 2nd next</th><th>roads</th></tr>'+A.clusters.map(cl=>{const ss=segOf(cl.id),s=ss[0];return `<tr><td class="mono">${cl.id}</td><td class="mono">${kmf(cl.startM)}–${kmf(cl.endM)}</td><td class="mono">${kmf(cl.len)} km</td><td class="mono">${cl.n}</td><td class="mono">${mf(cl.medLen)} m</td><td class="mono">${kph(cl.avgV)}</td><td style="white-space:normal;min-width:130px">${esc(cl.g.kind)}</td><td>${cl.g.hw}</td><td>${cl.g.conf}</td><td>${s?esc(s.hw)+(s.limit?' '+s.limit:'')+' <span class="sub">'+esc(s.src||'')+'</span>':'–'}</td>${[0,1].map(i=>{const b=cl.bridge[i];return `<td class="mono">${b?kmf(b.distM)+' km · '+Math.round(b.sec/60)+' min':'–'}</td>`}).join('')}<td class="sub" style="white-space:normal;min-width:160px" title="${esc(cl.g.why)}">${esc(cl.names.slice(0,2).join(', '))}</td></tr>`}).join('')+'</table></div>';
+ h+='<h3 style="margin-top:12px">Where clusters change</h3><div class="scroll"><table><tr><th>km</th><th>to end</th><th>cluster</th><th>two roads before</th><th>two roads after</th></tr>'+A.deltas.map(d=>`<tr><td class="mono">${f1(d.kmFromStart)}</td><td class="mono">${f1(d.kmToEnd)}</td><td class="mono">${d.fromCl} → ${d.toCl}</td><td style="white-space:normal">${esc(d.before.join(' → '))}</td><td style="white-space:normal">${esc(d.after.join(' → '))}</td></tr>`).join('')+'</table></div>';
+ h+='<h3 style="margin-top:12px">Checkpoints</h3><div class="scroll"><table><tr><th>what</th><th>km from start</th><th>to end</th><th>road</th><th>road length</th><th>km/h</th><th>to change ◂ ▸</th><th>before → after</th><th>guess</th><th>probe</th></tr>'+A.checkpoints.map(c=>`<tr><td>${esc(c.label)}</td><td class="mono">${f1(c.kmFromStart)}</td><td class="mono">${f1(c.kmToEnd)}</td><td>${esc(c.road)}</td><td class="mono">${mf(c.len)} m</td><td class="mono">${kph(c.v)}</td><td class="mono">${mf(c.toChangeBefore)} ◂ ▸ ${mf(c.toChangeAfter)} m</td><td style="white-space:normal" class="sub">${esc(c.prev||'start')} → ${esc(c.next||'end')}</td><td>${c.guess}</td><td>${c.probe?esc(c.probe.hw)+(c.probe.limit?' '+c.probe.limit:c.probe.unlimited?' none':''):'–'}</td></tr>`).join('')+'</table></div>';
+ h+='<details style="margin-top:12px"><summary>All '+A.steps.length+' roads in order</summary><div class="scroll"><table><tr><th>#</th><th>road</th><th>km from start</th><th>to end</th><th>length</th><th>sec</th><th>km/h</th><th>cluster</th></tr>'+A.steps.map(s=>`<tr><td class="mono">${s.i+1}</td><td>${esc(s.label)}</td><td class="mono">${f1(s.startM/1000,2)}</td><td class="mono">${f1((A.L-s.startM)/1000,2)}</td><td class="mono">${mf(s.dist)} m</td><td class="mono">${Math.round(s.dur)}</td><td class="mono">${kph(s.v)}</td><td class="mono">${s.ci}</td></tr>`).join('')+'</table></div></details>';
+ el.innerHTML=h;
+}
+function analysisJson(){
+ const A=plan&&plan.analysis;if(!A)return '';
+ const res={};if(segs.length)for(const k in S.profiles){const t=C.computeRoute(segs,S.car,S.params,S.prices,S.profiles[k]).total;res[k]={km:+t.km.toFixed(2),L:+t.L.toFixed(2),eur:+t.cost.toFixed(2),min:Math.round(t.sec/60)}}
+ return JSON.stringify({app:'trip-fuel',when:new Date().toISOString(),places:plan.places||S.places,layers:{route:plan.routeLayer,roads:plan.classLayer},settings:{mode:S.mode,an:S.an},
+  car:{mass:C.totalMass(S.car),Cd:+C.estimateCd(S.car).cd.toFixed(3),A:+C.frontalArea(S.car).toFixed(2),calib:S.params.calib},
+  roads:A.steps.map(s=>[s.label,Math.round(s.dist),Math.round(s.dur),s.ci]),
+  clusters:A.clusters.map(c=>({id:c.id,fromKm:+(c.startM/1000).toFixed(2),toKm:+(c.endM/1000).toFixed(2),roads:c.n,medianStepM:Math.round(c.medLen),avgKmh:Math.round(c.avgV*3.6),guess:c.g.hw,conf:c.g.conf,why:c.g.why})),
+  deltas:A.deltas.map(d=>({km:+d.kmFromStart.toFixed(2),before:d.before,after:d.after})),
+  checkpoints:A.checkpoints.map(c=>({key:c.key,km:+c.kmFromStart.toFixed(2),road:c.road,lenM:Math.round(c.len),kmh:c.v?Math.round(c.v*3.6):null,guess:c.guess,probe:c.probe||null})),
+  segments:segs.map(s=>({name:s.name,hw:s.hw,limit:s.limit,country:s.country,km:+(s.len/1000).toFixed(2),src:s.src||null})),results:res,levels:Object.fromEntries(Object.keys(levels).map(k=>{const T=C.computeRoute(levels[k],S.car,S.params,S.prices,S.profiles[S.profileKey]).total;return [k,{segments:levels[k].length,L:+T.L.toFixed(2),eur:+T.cost.toFixed(2),min:Math.round(T.sec/60)}]})),clusterDetail:A.clusters.map(c=>({id:c.id,kind:c.g.kind,turns:c.turns,bridge:c.bridge.map(b=>({to:b.to,km:+(b.distM/1000).toFixed(2),min:+(b.sec/60).toFixed(1)})),samples:c.samples.map(s=>({kind:s.kind,km:+s.km.toFixed(2)}))}))},null,1);
+}
+$('copyAna').onclick=async()=>{const j=analysisJson(),ta=$('anaJson');ta.value=j;ta.hidden=false;try{await navigator.clipboard.writeText(j);$('copyAna').textContent='Copied ✓'}catch(e){ta.select();$('copyAna').textContent='Select & copy below'}setTimeout(()=>$('copyAna').textContent='Copy analysis JSON',3000)};
+
 /* ---------- TRIPS tab ---------- */
 function tripCost(t){const T=C.computeRoute(t.segs,S.car,S.params,S.prices,S.profiles[t.profile]||S.profiles.limit).total,m=t.round?2:1;return{cost:T.cost*m,L:T.L*m,km:T.km*m}}
 function renderTrips(){
@@ -846,8 +1107,39 @@ $('addLine').onclick=()=>{S.budget.push({name:'New line',amt:0,kind:'income'});s
 $('tripList').addEventListener('input',e=>{const r=e.target.closest('[data-i]'),f=e.target.dataset.f;if(!r||!f)return;const t=S.trips[+r.dataset.i];t[f]=f==='times'?Math.max(0,+e.target.value||0):f==='round'?e.target.checked:e.target.value;save();updTrips()});
 $('tripList').addEventListener('click',e=>{const d=e.target.dataset.del;if(d!=null){S.trips.splice(+d,1);save();renderTrips()}});
 
+/* ---------- DRIVES ---------- */
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+let dvMonth=today().slice(0,7);
+function renderDrives(){
+ $('dv_date').value=$('dv_date').value||today();$('dv_month').value=dvMonth;
+ $('dvList').innerHTML=S.trips.map(t=>`<option value="${esc(t.label)}">`).join('');
+ $('dv_trip').innerHTML='<option value="">Fill from a saved trip…</option>'+S.trips.map((t,i)=>`<option value="${i}">${esc(t.label)}</option>`).join('');
+ const list=S.drives.filter(d=>d.date.slice(0,7)===dvMonth).sort((a,b)=>b.date.localeCompare(a.date));
+ const sum=k=>list.reduce((a,d)=>a+(+d[k]||0),0),km=sum('km'),L=sum('litres'),eu=sum('eur'),rest=sum('rest');
+ const withL=list.filter(d=>d.litres>0&&d.km>0),avg=withL.length?withL.reduce((a,d)=>a+d.litres,0)/withL.reduce((a,d)=>a+d.km,0)*100:null;
+ $('dv_sum').innerHTML=[[f1(km,0)+' km','driven'],[list.length,'drives'],[eur(eu),'spent on fuel'],[f1(L)+' L','fuel'],[avg?f1(avg)+' L/100':'–','real average'],[rest,'rest stops']].map(x=>`<div><b>${x[0]}</b><small>${x[1]}</small></div>`).join('');
+ const inc=S.budget.filter(b=>b.kind==='income').reduce((a,b)=>a+(+b.amt||0),0),fix=S.budget.filter(b=>b.kind==='fixed').reduce((a,b)=>a+(+b.amt||0),0),avail=inc-fix,left=avail-eu;
+ $('dv_bud').innerHTML=`<div class="sub">Budget available ${eur(avail)} (Trips &amp; budget tab) · fuel spent ${eur(eu)}</div><div class="bar" style="margin-top:4px"><i style="width:${avail>0?clamp(eu/avail*100,0,100):100}%;background:${left<0?'var(--bad)':'var(--accent)'}"></i></div><div class="mono" style="margin-top:4px;${left<0?'color:var(--bad)':'color:var(--ok)'}">${eur(left)} left</div>`;
+ const est=list.filter(d=>d.estL>0&&d.litres>0);
+ if(est.length){const a=est.reduce((x,d)=>x+d.litres,0),b=est.reduce((x,d)=>x+d.estL,0);$('dv_cal').innerHTML=`Model said ${f1(b)} L, you used ${f1(a)} L on ${est.length} linked drive(s) (${a>b?'+':''}${f1((a/b-1)*100,0)}%). <button class="b g sm" id="dv_apply">Apply to calibration (×${(S.params.calib*a/b).toFixed(2)})</button>`;$('dv_apply').onclick=()=>{S.params.calib=+(S.params.calib*a/b).toFixed(3);save();carOut();calcRoute();renderDrives()}}else $('dv_cal').textContent='Log drives from a saved trip with litres to compare with the model.';
+ $('dv_tab').innerHTML='<tr><th>Date</th><th>Route</th><th>km</th><th>L</th><th>€</th><th>L/100</th><th>rest</th><th>notes</th><th></th></tr>'+list.map(d=>`<tr><td class="mono">${d.date.slice(5)}</td><td>${esc(d.label)}</td><td class="mono">${f1(d.km)}</td><td class="mono">${d.litres?f1(d.litres,2):'–'}</td><td class="mono">${d.eur?f1(d.eur,2):'–'}</td><td class="mono">${d.litres&&d.km?f1(d.litres/d.km*100):'–'}</td><td class="mono">${d.rest||0}</td><td class="sub" style="white-space:normal">${esc(d.note||'')}</td><td><button class="b g sm" data-del="${d.id}" aria-label="delete drive">✕</button></td></tr>`).join('');
+}
+$('dv_month').onchange=e=>{dvMonth=e.target.value||dvMonth;renderDrives()};
+$('dv_trip').onchange=e=>{const t=S.trips[+e.target.value];if(!t)return;const c=tripCost(t);$('dv_label').value=t.label;$('dv_km').value=c.km.toFixed(1);$('dv_l').value='';$('dv_eur').value='';$('dv_trip').dataset.est=c.L.toFixed(2)};
+$('dv_add').onclick=()=>{
+ const km=+$('dv_km').value,L=+$('dv_l').value||0;let eu=+$('dv_eur').value||0;
+ if(!(km>0)){$('dv_stat').textContent='enter the km first';return}
+ if(!eu&&L)eu=L*S.prices.NL;
+ S.drives.push({id:Date.now(),date:$('dv_date').value||today(),label:$('dv_label').value||'Drive',km,litres:L,eur:+eu.toFixed(2),rest:+$('dv_rest').value||0,note:$('dv_note').value,estL:+$('dv_trip').dataset.est||0});
+ ['dv_km','dv_l','dv_eur','dv_note'].forEach(i=>$(i).value='');$('dv_rest').value=0;$('dv_trip').value='';delete $('dv_trip').dataset.est;
+ $('dv_stat').textContent='added ✓';setTimeout(()=>$('dv_stat').textContent='',2000);dvMonth=S.drives[S.drives.length-1].date.slice(0,7);save();renderDrives();
+};
+$('dv_tab').addEventListener('click',e=>{const d=e.target.dataset.del;if(d){S.drives=S.drives.filter(x=>String(x.id)!==d);save();renderDrives()}});
+$('dv_export').onclick=()=>{$('dv_json').value=JSON.stringify(S.drives,null,1);$('dv_json').select()};
+$('dv_import').onclick=()=>{try{const a=JSON.parse($('dv_json').value);if(!Array.isArray(a))throw 0;const ids=new Set(S.drives.map(d=>d.id));a.forEach(d=>{if(d&&d.date&&d.km>=0&&!ids.has(d.id))S.drives.push(Object.assign({id:Date.now()+Math.random()},d))});save();renderDrives();$('dv_stat').textContent='imported ✓'}catch(e){$('dv_stat').textContent='not valid JSON'}};
+
 /* ---------- DEBUG ---------- */
-const LAYERS=[['Geocode','nominatim'],['Geocode','photon'],['Geocode','gazetteer'],['Route','osrm'],['Route','valhalla'],['Route','straight-line'],['Roads','overpass'],['Roads','overpass-mirror'],['Roads','osrm-step-heuristic']];
+const LAYERS=[['Geocode','nominatim'],['Geocode','photon'],['Geocode','gazetteer'],['Route','osrm'],['Route','valhalla'],['Route','straight-line'],['Roads','smart-probes'],['Roads','smart-probes-mirror'],['Roads','cluster-guess'],['Roads','osrm-step-heuristic'],['Roads','overpass'],['Roads','overpass-mirror'],['Roads','overpass-light']];
 function renderDebug(){
  $('layers').innerHTML=LAYERS.map(([s,l])=>`<label class="row" style="gap:6px"><input type="checkbox" data-l="${l}" ${S.disabled[l]?'':'checked'}> <span class="sub" style="width:64px">${s}</span><span class="mono">${l}</span></label>`).join('');
  $('offline').checked=!!S.offline;renderLog();
@@ -870,7 +1162,7 @@ $('selfTest').onclick=async()=>{
 };
 
 /* ---------- init ---------- */
-buildCtl();buildPlaces();buildPrices();buildProf();$('round').checked=S.round;
+buildCtl();bindAn();buildPlaces();buildPrices();buildProf();$('round').checked=S.round;
 syncCtl();drawCar();carOut();renderLog();
 showTab(TABS.some(t=>t[0]===S.tab)?S.tab:'car');
 setSample(true);
