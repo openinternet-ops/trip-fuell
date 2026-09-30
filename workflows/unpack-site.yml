@@ -1,0 +1,44 @@
+# Put this file in your repo as:  .github/workflows/unpack-site.yml
+# Then, to update the site: upload site.zip to the repo root (Add file ▸ Upload files).
+# This action unpacks the zip over the repo, deletes the zip and commits — GitHub Pages then redeploys by itself.
+name: Unpack uploaded site zip
+
+on:
+  push:
+    paths: ['*.zip']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack every .zip in the repo root
+        run: |
+          set -e
+          shopt -s nullglob
+          zips=(*.zip)
+          if [ ${#zips[@]} -eq 0 ]; then echo "no zip found"; exit 0; fi
+          for z in "${zips[@]}"; do
+            echo "unpacking $z"
+            tmp=$(mktemp -d)
+            unzip -q -o "$z" -d "$tmp" -x '__MACOSX/*' '.github/*' '*.DS_Store' || true
+            # if the zip holds a single folder with index.html inside, use that folder
+            if [ ! -f "$tmp/index.html" ]; then
+              d=$(find "$tmp" -mindepth 2 -maxdepth 2 -name index.html -printf '%h\n' | head -n1)
+              [ -n "$d" ] && tmp="$d"
+            fi
+            cp -a "$tmp"/. .
+            git rm -q -f "$z"
+          done
+
+      - name: Commit and push
+        run: |
+          git config user.name "site-bot"
+          git config user.email "site-bot@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "nothing changed"; else git commit -m "Update site from uploaded zip"; git push; fi
